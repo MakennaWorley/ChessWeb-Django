@@ -52,7 +52,7 @@ class Command(BaseCommand):
                     except Player.DoesNotExist:
                         self.stdout.write(f"Black player '{row['Black']}' not found.")
 
-                result = row.get('result')
+                result = row.get('Results')
                 if result is None or result.lower() in ['', 'NULL', 'None']:
                     result = ''
 

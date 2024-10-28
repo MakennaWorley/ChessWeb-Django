@@ -330,11 +330,11 @@ def save_games(request):
                     black.append(details[1])
                     results.append(details[2])'''
 
-                    if details[0] in Player.objects.filter(is_active=True, is_volunteer=True).all() or details[
-                        1] in Player.objects.filter(is_active=True, is_volunteer=True).all():
-                        print("Game has a volunteer playing")
-                        continue
+                    if details[0] in Player.objects.filter(is_active=True, is_volunteer=True).all(): # Volunteer on White
+                        Player.update_rating(details[1], details[1].rating, details[0], user)
 
+                    elif details[1] in Player.objects.filter(is_active=True, is_volunteer=True).all(): # Volunteer on Black
+                        Player.update_rating(details[0], details[0].rating, details[1], user)
                     else:
                         if details[2] == 'White':
                             w_rating = RATINGS_HELPER(details[0].rating, 1,
@@ -460,9 +460,6 @@ def new_pairings(request):
 
 
 def pair_players(players, separate_classes):
-    # players: list of Player objects with ratings
-    # separate_classes_flag: whether to separate Krishnam and Sam's classes
-
     pairings = []
     unpaired = []
 
@@ -488,19 +485,41 @@ def pair_players(players, separate_classes):
 
 
 def pair_within_class(pairings, unpaired, class_players):
-
     for player in class_players:
-        print(f"Trying to pair {player.first_name} {player.last_name}")
-        if player.opponent_one:
-            potential_opponents = [p for p in class_players if p != player
-                                   and abs(player.rating - p.rating) <= 20
-                                   and p not in [player.opponent_one, player.opponent_two, player.opponent_three]]
+        print(f"Trying to pair", player)
+        opponent1 = player.opponent_one
+        opponent2 = player.opponent_two
+        opponent3 = player.opponent_three
+        potential_opponents = []
 
-            print(
-                f"Potential opponents for {player.first_name} {player.last_name}: {[p.first_name + ' ' + p.last_name for p in potential_opponents]}")
-            print(potential_opponents)
+        if opponent1 is not None: # Has previous opponents
+            print("Previous opponents are:", opponent1, opponent2, opponent3)
 
-            if potential_opponents:
+            for p in Player.objects.filter(is_active=True, is_volunteer=False):
+                if player != p and p not in [opponent1, opponent2, opponent3]: # No self-matching or matching to previously play opponents
+                    if abs(player.rating - p.rating) <= 20:
+                        print("adding:", p)
+                        potential_opponents.append(p)
+        else: # Has no previous opponents, getting last game data
+            #check if game exists in database and is_active is True
+            #don't pair with that opponent
+
+            for p in Player.objects.filter(is_active=True, is_volunteer=False):
+                if player != p:
+                    if abs(player.rating - p.rating) <= 20:
+                        print("adding:", p)
+                        potential_opponents.append(p)
+        print(potential_opponents)
+
+        if len(potential_opponents) == 0: # No opponents could be found
+            print("No potential opponents found")
+            #place on board as white
+        else:
+            print(get_last_game(player))
+
+
+        print()
+        '''if potential_opponents:
                 print("Checking first potential opponent", potential_opponents[0])
                 opponent = potential_opponents[0]
                 last_game_player = get_last_game(player)
@@ -528,7 +547,7 @@ def pair_within_class(pairings, unpaired, class_players):
         else:  # still needs to pair
             print(f"Player {player.first_name} {player.last_name} has no recent opponents, adding to unpaired")
             unpaired.append(player)
-        print()
+        print()'''
 
     return pairings, unpaired
 
@@ -538,6 +557,8 @@ def get_last_game(player):
         (Q(white=player) & Q(black=player.opponent_one)) |
         (Q(white=player.opponent_one) & Q(black=player))
     ).order_by('-date_of_match').first()
+
+    print(last_game)
 
     if last_game:
         if last_game.white == player:
