@@ -406,12 +406,13 @@ def new_pairings(request):
             games = data.get('games')
             separate_classes = data.get('separate_classes', False)
 
-            print(game_date, separate_classes)
-
             used_boards = []
+            pairings = []
             paired_players = set()
 
             user = request.user
+
+            print("submitted games:", games)
 
             # Manually created games
             with transaction.atomic():
@@ -448,9 +449,24 @@ def new_pairings(request):
             unpaired_players = list(Player.objects.filter(is_active=True, is_volunteer=False).exclude(
                 id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name',
                                                                           'first_name'))
+            print(unpaired_players)
 
-            print(unused_boards, unpaired_players)
-            print(pair_players(unpaired_players, separate_classes))
+            # Computer paired games
+            if separate_classes:
+                krishnam_class = [p for p in unpaired_players if p.lesson_class.name == 'Krishnam']
+                sam_class = [p for p in unpaired_players if p.lesson_class.name == 'Sam']
+                other_class = [p for p in unpaired_players if p.lesson_class.name not in ['Krishnam', 'Sam']]
+            else:
+                other_class = unpaired_players
+
+            pairings = pair(other_class, pairings)
+            if separate_classes:
+                pair(krishnam_class, pairings)
+                pair(sam_class, pairings)
+
+            print(pairings)
+
+            #assign the boards to the games based on order
 
             return JsonResponse({'status': 'success', 'message': message}, status=200)
         except json.JSONDecodeError:
@@ -459,112 +475,62 @@ def new_pairings(request):
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
 
-def pair_players(players, separate_classes):
-    pairings = []
-    unpaired = []
+def pair(unpaired_players, pairings):
+    if not unpaired_players:
+        return pairings
+    elif len(unpaired_players) == 1:
+        pairings.append(unpaired_players[0].name() + ':')
+        return pairings
 
-    if separate_classes:
-        krishnam_class = [p for p in players if p.lesson_class.name == 'Krishnam']
-        sam_class = [p for p in players if p.lesson_class.name == 'Sam']
-        other_class = [p for p in players if p.lesson_class.name not in ['Krishnam', 'Sam']]
-    else:
-        krishnam_class = []
-        sam_class = []
-        other_class = players
+    found_opponent = False
+    player = unpaired_players[0]
+    opponent_list = [player.opponent_one, player.opponent_two, player.opponent_three]
 
-    print(krishnam_class)
-    print(sam_class)
-    print(other_class)
+    print(player.name(), opponent_list)
 
-    # if separate_classes:
-    #     pair_within_class(pairings, krishnam_class)
-    #     pair_within_class(pairings, sam_class)
-    pair_within_class(pairings, unpaired, other_class)
+    for i in range(1, len(unpaired_players)):
+        if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 21:
+            print("opponent is:", unpaired_players[i].name())
+            pairings.append(get_pair_placement(player, unpaired_players[i]))
+            unpaired_players.remove(unpaired_players[i])
+            unpaired_players.remove(player)
+            found_opponent = True
+            break
 
-    return pairings, unpaired
+    if found_opponent is False:
+        print("could not find an opponent")
+        pairings.append(player.name() + ':')
+        unpaired_players.remove(player)
+
+    return pair(unpaired_players, pairings)
 
 
-def pair_within_class(pairings, unpaired, class_players):
-    for player in class_players:
-        print(f"Trying to pair", player)
-        opponent1 = player.opponent_one
-        opponent2 = player.opponent_two
-        opponent3 = player.opponent_three
-        potential_opponents = []
-
-        if opponent1 is not None: # Has previous opponents
-            print("Previous opponents are:", opponent1, opponent2, opponent3)
-
-            for p in Player.objects.filter(is_active=True, is_volunteer=False):
-                if player != p and p not in [opponent1, opponent2, opponent3]: # No self-matching or matching to previously play opponents
-                    if abs(player.rating - p.rating) <= 20:
-                        print("adding:", p)
-                        potential_opponents.append(p)
-        else: # Has no previous opponents, getting last game data
-            #check if game exists in database and is_active is True
-            #don't pair with that opponent
-
-            for p in Player.objects.filter(is_active=True, is_volunteer=False):
-                if player != p:
-                    if abs(player.rating - p.rating) <= 20:
-                        print("adding:", p)
-                        potential_opponents.append(p)
-        print(potential_opponents)
-
-        if len(potential_opponents) == 0: # No opponents could be found
-            print("No potential opponents found")
-            #place on board as white
+def get_pair_placement(player, opponent):
+    if get_player_placement(player) == get_player_placement(opponent):
+        if player.rating < opponent.rating:
+            return "" + player.name() + ":" + opponent.name()
         else:
-            print(get_last_game(player))
+            return opponent.name() + ":" + player.name()
+    else:
+        if get_player_placement(player) == "white":
+            return player.name() + ":" + opponent.name()
+        else:
+            return opponent.name() + ":" + player.name()
 
 
-        print()
-        '''if potential_opponents:
-                print("Checking first potential opponent", potential_opponents[0])
-                opponent = potential_opponents[0]
-                last_game_player = get_last_game(player)
-                last_game_opponent = get_last_game(opponent)
-                print(last_game_player, last_game_opponent)
-
-                if last_game_player and last_game_opponent:
-                    if last_game_player == last_game_opponent:
-                        if player.rating < opponent.rating:
-                            pairings.append((player, opponent, "white", "black"))
-                        else:
-                            pairings.append((opponent, player, "white", "black"))
-                        print(
-                            f"Paired {player.first_name} {player.last_name} with {opponent.first_name} {opponent.last_name}")
-                    else:
-                        if last_game_player == "white":
-                            pairings.append((player, opponent, "black", "white"))
-                        else:
-                            pairings.append((player, opponent, "white", "black"))
-                        print(
-                            f"Paired {player.first_name} {player.last_name} with {opponent.first_name} {opponent.last_name} (color adjusted)")
-            else:  # still needs to pair
-                print(f"No valid opponents found for {player.first_name} {player.last_name}, adding to unpaired")
-                unpaired.append(player)
-        else:  # still needs to pair
-            print(f"Player {player.first_name} {player.last_name} has no recent opponents, adding to unpaired")
-            unpaired.append(player)
-        print()'''
-
-    return pairings, unpaired
-
-
-def get_last_game(player):
+def get_player_placement(player):
     last_game = Game.objects.filter(
-        (Q(white=player) & Q(black=player.opponent_one)) |
-        (Q(white=player.opponent_one) & Q(black=player))
+        (Q(white=player)) |
+        (Q(black=player))
     ).order_by('-date_of_match').first()
-
-    print(last_game)
 
     if last_game:
         if last_game.white == player:
-            return "white"
-        elif last_game.black == player:
             return "black"
+        else:
+            return "white"
+    else:
+        return "white"
 
 
 def download_pairings(request):
