@@ -412,7 +412,7 @@ def new_pairings(request):
 
             user = request.user
 
-            print("submitted games:", games)
+            #print("submitted games:", games)
 
             # Manually created games
             with transaction.atomic():
@@ -449,7 +449,6 @@ def new_pairings(request):
             unpaired_players = list(Player.objects.filter(is_active=True, is_volunteer=False).exclude(
                 id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name',
                                                                           'first_name'))
-            print(unpaired_players)
 
             # Computer paired games
             if separate_classes:
@@ -465,8 +464,35 @@ def new_pairings(request):
                 pair(sam_class, pairings)
 
             print(pairings)
+            print()
 
-            #assign the boards to the games based on order
+            with transaction.atomic():
+                for i, pairing in enumerate(pairings):
+                    board = unused_boards[i]
+                    white_player_name, black_player_name = pairing.split(':')
+                    print(board, white_player_name, black_player_name)
+
+                    '''white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
+                                                         last_name=white_player_name.split(', ')[0],
+                                                         is_active=True).first()
+                    black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
+                                                         last_name=black_player_name.split(', ')[0],
+                                                         is_active=True).first()
+
+                    used_boards.append(board)
+                    paired_players.add(white_player)
+                    paired_players.add(black_player)
+                    print(white_player.name, black_player.name)
+
+                    Game.add_game(
+                        date_of_match=game_date,
+                        board_letter=board[0],
+                        board_number=int(board[2:]),
+                        white=white_player,
+                        black=black_player,
+                        result='',
+                        modified_by=user
+                    )'''
 
             return JsonResponse({'status': 'success', 'message': message}, status=200)
         except json.JSONDecodeError:
@@ -484,13 +510,13 @@ def pair(unpaired_players, pairings):
 
     found_opponent = False
     player = unpaired_players[0]
-    opponent_list = [player.opponent_one, player.opponent_two, player.opponent_three]
+    opponent_list = [player.opponent_one, player.opponent_two] #, player.opponent_three]
 
-    print(player.name(), opponent_list)
+    #print(player.name(), opponent_list)
 
     for i in range(1, len(unpaired_players)):
         if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 21:
-            print("opponent is:", unpaired_players[i].name())
+            #print("opponent is:", unpaired_players[i].name())
             pairings.append(get_pair_placement(player, unpaired_players[i]))
             unpaired_players.remove(unpaired_players[i])
             unpaired_players.remove(player)
@@ -498,7 +524,7 @@ def pair(unpaired_players, pairings):
             break
 
     if found_opponent is False:
-        print("could not find an opponent")
+        #print("could not find an opponent")
         pairings.append(player.name() + ':')
         unpaired_players.remove(player)
 

@@ -14,7 +14,7 @@
             <div id="gameModal" class="modal">
                 <div class="modal-content">
                     <span class="close">&times;</span>
-                    <h2>Create New Games for <span id="selectedDate"></span></h2>
+                    <h2>Create New Games for <span id="selectedDateDisplay"></span></h2>
 
                     <form id="newGamesForm" method="POST" action="#">
                         {% csrf_token %}
@@ -56,7 +56,7 @@
             const gameModal = document.getElementById('gameModal');
             const closeModal = document.getElementsByClassName('close')[0];
             const newGamesTableBody = document.getElementById('newGamesTableBody');
-            const selectedDateSpan = document.getElementById('selectedDate');
+            const selectedDateSpan = document.getElementById('selectedDateDisplay');
             
             let cachedPlayers = null;
             
@@ -127,6 +127,9 @@
 
                 if (formattedDate) {
                     newGamesTableBody.innerHTML = '';
+                    
+                    selectedDateSpan.textContent = formattedDate;
+                    
                     const boards = [
                         ...Array.from({length: 5}, (_, i) => `G-${i + 1}`),
                         ...Array.from({length: 6}, (_, i) => `H-${i + 1}`),

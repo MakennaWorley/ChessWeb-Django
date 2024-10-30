@@ -73,6 +73,19 @@ class Command(BaseCommand):
                     self.stdout.write(f'Created game: {game}')
                     game.created_at = timezone.now()
                     game.save()
+
+                    if result in ['White', 'Black', 'Draw']:
+                        if white:
+                            white.opponent_three = white.opponent_two
+                            white.opponent_two = white.opponent_one
+                            white.opponent_one = black
+                            white.save()
+
+                        if black:
+                            black.opponent_three = black.opponent_two
+                            black.opponent_two = black.opponent_one
+                            black.opponent_one = white
+                            black.save()
                 else:
                     self.stdout.write(f'Game already exists: {game}')
         self.stdout.write('Game import completed.')
