@@ -420,7 +420,6 @@ def new_pairings(request):
                     board = game.get('board')
                     white_player_name = game.get('whitePlayer')
                     black_player_name = game.get('blackPlayer')
-                    print(board, white_player_name, black_player_name)
 
                     white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
                                                          last_name=white_player_name.split(', ')[0],
@@ -432,7 +431,6 @@ def new_pairings(request):
                     used_boards.append(board)
                     paired_players.add(white_player)
                     paired_players.add(black_player)
-                    print(white_player.name, black_player.name)
 
                     Game.add_game(
                         date_of_match=game_date,
@@ -470,19 +468,21 @@ def new_pairings(request):
                 for i, pairing in enumerate(pairings):
                     board = unused_boards[i]
                     white_player_name, black_player_name = pairing.split(':')
-                    print(board, white_player_name, black_player_name)
+                    # print(board, white_player_name, black_player_name)
 
-                    '''white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
+                    if white_player_name:
+                        white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
                                                          last_name=white_player_name.split(', ')[0],
                                                          is_active=True).first()
-                    black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
-                                                         last_name=black_player_name.split(', ')[0],
-                                                         is_active=True).first()
+                    else:
+                        white_player = None
 
-                    used_boards.append(board)
-                    paired_players.add(white_player)
-                    paired_players.add(black_player)
-                    print(white_player.name, black_player.name)
+                    if black_player_name:
+                        black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
+                                                             last_name=black_player_name.split(', ')[0],
+                                                             is_active=True).first()
+                    else:
+                        black_player = None
 
                     Game.add_game(
                         date_of_match=game_date,
@@ -492,7 +492,7 @@ def new_pairings(request):
                         black=black_player,
                         result='',
                         modified_by=user
-                    )'''
+                    )
 
             return JsonResponse({'status': 'success', 'message': message}, status=200)
         except json.JSONDecodeError:
