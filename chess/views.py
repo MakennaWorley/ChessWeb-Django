@@ -16,17 +16,16 @@ from .forms import SignUpForm, SearchForm, PairingDateForm, GameSaveForm
 from .models import RegisteredUser, Player, LessonClass, Game  # , Club
 from .write_to_file import write_ratings, write_pairings
 
-
 CREATED_RATING_FILES_DIR = os.path.join(os.path.dirname(__file__), '../files', 'ratings')
 CREATED_PAIRING_FILES_DIR = os.path.join(os.path.dirname(__file__), '../files', 'pairings')
 
-GAME_SORT_ORDER = ['G', 'H', 'I', 'J']
+BOARD_SORT_ORDER = ['G', 'H', 'I', 'J']
 BOARDS = [
-        *[f"G-{i + 1}" for i in range(5)],
-        *[f"H-{i + 1}" for i in range(6)],
-        *[f"I-{i + 1}" for i in range(22)],
-        *[f"J-{i + 1}" for i in range(22)]
-    ]
+    *[f"G-{i + 1}" for i in range(5)],
+    *[f"H-{i + 1}" for i in range(6)],
+    *[f"I-{i + 1}" for i in range(22)],
+    *[f"J-{i + 1}" for i in range(22)]
+]
 
 RATINGS_HELPER = lambda rating, result, expected: round(rating + 32 * (result - expected))
 CALC_EXPECTED = lambda player_rating, opponent_rating: 1 / (1 + 10 ** ((opponent_rating - player_rating) / 400))
@@ -48,9 +47,11 @@ def get_players(request):
 
 
 def get_ratings_sheet(request):
-    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating', '-grade', 'last_name', 'first_name')
+    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
+                                                                                                     '-grade',
+                                                                                                     'last_name',
+                                                                                                     'first_name')
     return render(request, 'chess/ratings_sheet.html', {'players': players})
-
 
 
 def login_view(request):
@@ -109,7 +110,10 @@ def home_view(request):
     games_by_date = Game.objects.filter(is_active=True).values('date_of_match').annotate(
         game_count=Count('id')).order_by('-date_of_match')
 
-    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating', '-grade', 'last_name', 'first_name')
+    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
+                                                                                                     '-grade',
+                                                                                                     'last_name',
+                                                                                                     'first_name')
     class_list = LessonClass.objects.filter(is_active=True)
 
     context = {
@@ -204,21 +208,21 @@ def save_games(request):
                 game['board']: {key: value for key, value in game.items() if key != 'board'} for game in games
                 if not (game['white'] == "N/A" and game['black'] == "N/A")
             }
-            #print(games_keyed)
+            # print(games_keyed)
 
             games_db = Game.objects.filter(date_of_match=game_date)
             games_db_keyed = {
                 game.get_board(): game for game in games_db
             }
-            #print(games_db_keyed)
+            # print(games_db_keyed)
 
-            #games not in the db
+            # games not in the db
             new_games_to_db = {
                 board: details for board, details in games_keyed.items() if board not in games_db_keyed
             }
             print("Games being added:", new_games_to_db)
 
-            #games not in data
+            # games not in data
             games_not_in_data = {
                 board: game for board, game in games_db_keyed.items() if board not in games_keyed
             }
@@ -289,11 +293,11 @@ def save_games(request):
                     white_player = Player.objects.filter(first_name=details['white'].split(', ')[1],
                                                          last_name=details['white'].split(', ')[0],
                                                          is_active=True).first() if details[
-                                                                                    'white'] != "N/A" else None
+                                                                                        'white'] != "N/A" else None
                     black_player = Player.objects.filter(first_name=details['black'].split(', ')[1],
                                                          last_name=details['black'].split(', ')[0],
                                                          is_active=True).first() if details[
-                                                                                    'black'] != "N/A" else None
+                                                                                        'black'] != "N/A" else None
                     if details['result'] != "NONE":
                         games_with_results[board] = [white_player, black_player, details['result']]
 
@@ -326,10 +330,11 @@ def save_games(request):
                     black.append(details[1])
                     results.append(details[2])'''
 
-                    if details[0] in Player.objects.filter(is_active=True, is_volunteer=True).all() or details[1] in Player.objects.filter(is_active=True, is_volunteer=True).all():
-                        print("Game has a volunteer playing")
-                        continue
+                    if details[0] in Player.objects.filter(is_active=True, is_volunteer=True).all(): # Volunteer on White
+                        Player.update_rating(details[1], details[1].rating, details[0], user)
 
+                    elif details[1] in Player.objects.filter(is_active=True, is_volunteer=True).all(): # Volunteer on Black
+                        Player.update_rating(details[0], details[0].rating, details[1], user)
                     else:
                         if details[2] == 'White':
                             w_rating = RATINGS_HELPER(details[0].rating, 1,
@@ -389,6 +394,169 @@ def download_ratings(request):
 def pair_view(request):
     form = PairingDateForm()  # Create an instance of the form
     return render(request, 'chess/pair.html', {'form': form})
+
+
+def new_pairings(request):
+    if request.method == 'POST':
+        try:
+            unicode = request.body.decode('utf-8')
+            data = json.loads(unicode)
+
+            game_date = data.get('game_date')
+            games = data.get('games')
+            separate_classes = data.get('separate_classes', False)
+
+            used_boards = []
+            pairings = []
+            paired_players = set()
+
+            user = request.user
+
+            #print("submitted games:", games)
+
+            # Manually created games
+            with transaction.atomic():
+                for game in games:
+                    board = game.get('board')
+                    white_player_name = game.get('whitePlayer')
+                    black_player_name = game.get('blackPlayer')
+
+                    white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
+                                                         last_name=white_player_name.split(', ')[0],
+                                                         is_active=True).first()
+                    black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
+                                                         last_name=black_player_name.split(', ')[0],
+                                                         is_active=True).first()
+
+                    used_boards.append(board)
+                    paired_players.add(white_player)
+                    paired_players.add(black_player)
+
+                    Game.add_game(
+                        date_of_match=game_date,
+                        board_letter=board[0],
+                        board_number=int(board[2:]),
+                        white=white_player,
+                        black=black_player,
+                        result='',
+                        modified_by=user
+                    )
+
+            message = "All manual pairings were successfully created."
+            unused_boards = [board for board in BOARDS if board not in used_boards]
+            unpaired_players = list(Player.objects.filter(is_active=True, is_volunteer=False).exclude(
+                id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name',
+                                                                          'first_name'))
+
+            # Computer paired games
+            if separate_classes:
+                krishnam_class = [p for p in unpaired_players if p.lesson_class.name == 'Krishnam']
+                sam_class = [p for p in unpaired_players if p.lesson_class.name == 'Sam']
+                other_class = [p for p in unpaired_players if p.lesson_class.name not in ['Krishnam', 'Sam']]
+            else:
+                other_class = unpaired_players
+
+            pairings = pair(other_class, pairings)
+            if separate_classes:
+                pair(krishnam_class, pairings)
+                pair(sam_class, pairings)
+
+            print(pairings)
+            print()
+
+            with transaction.atomic():
+                for i, pairing in enumerate(pairings):
+                    board = unused_boards[i]
+                    white_player_name, black_player_name = pairing.split(':')
+                    # print(board, white_player_name, black_player_name)
+
+                    if white_player_name:
+                        white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
+                                                         last_name=white_player_name.split(', ')[0],
+                                                         is_active=True).first()
+                    else:
+                        white_player = None
+
+                    if black_player_name:
+                        black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
+                                                             last_name=black_player_name.split(', ')[0],
+                                                             is_active=True).first()
+                    else:
+                        black_player = None
+
+                    Game.add_game(
+                        date_of_match=game_date,
+                        board_letter=board[0],
+                        board_number=int(board[2:]),
+                        white=white_player,
+                        black=black_player,
+                        result='',
+                        modified_by=user
+                    )
+
+            return JsonResponse({'status': 'success', 'message': message}, status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+
+def pair(unpaired_players, pairings):
+    if not unpaired_players:
+        return pairings
+    elif len(unpaired_players) == 1:
+        pairings.append(unpaired_players[0].name() + ':')
+        return pairings
+
+    found_opponent = False
+    player = unpaired_players[0]
+    opponent_list = [player.opponent_one, player.opponent_two] #, player.opponent_three]
+
+    #print(player.name(), opponent_list)
+
+    for i in range(1, len(unpaired_players)):
+        if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 21:
+            #print("opponent is:", unpaired_players[i].name())
+            pairings.append(get_pair_placement(player, unpaired_players[i]))
+            unpaired_players.remove(unpaired_players[i])
+            unpaired_players.remove(player)
+            found_opponent = True
+            break
+
+    if found_opponent is False:
+        #print("could not find an opponent")
+        pairings.append(player.name() + ':')
+        unpaired_players.remove(player)
+
+    return pair(unpaired_players, pairings)
+
+
+def get_pair_placement(player, opponent):
+    if get_player_placement(player) == get_player_placement(opponent):
+        if player.rating < opponent.rating:
+            return "" + player.name() + ":" + opponent.name()
+        else:
+            return opponent.name() + ":" + player.name()
+    else:
+        if get_player_placement(player) == "white":
+            return player.name() + ":" + opponent.name()
+        else:
+            return opponent.name() + ":" + player.name()
+
+
+def get_player_placement(player):
+    last_game = Game.objects.filter(
+        (Q(white=player)) |
+        (Q(black=player))
+    ).order_by('-date_of_match').first()
+
+    if last_game:
+        if last_game.white == player:
+            return "black"
+        else:
+            return "white"
+    else:
+        return "white"
 
 
 def download_pairings(request):
