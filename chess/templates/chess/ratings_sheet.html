@@ -1,4 +1,17 @@
-<tbody>
+<table>
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Rating</th>
+        <th>Rating Change</th>
+        <th>Grade</th>
+        <th>Coach(s)</th>
+        <th>Parent or Guardian</th>
+        <th>Parent Email</th>
+        <th>Parent Phone Number</th>
+    </tr>
+    </thead>
+    <tbody>
     {% for player in players %}
         <tr>
             <td>{{ player.name }}</td>
@@ -11,4 +24,5 @@
             <td>{{ player.phone }}</td>
         </tr>
     {% endfor %}
-</tbody>
+    </tbody>
+</table>

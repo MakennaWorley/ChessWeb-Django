@@ -7,8 +7,9 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+''' This file contains the custom function for importing game data via csv files to establish the database '''
 class Command(BaseCommand):
-    help = 'Import all data from CSV files: volunteers, classes, and players'
+    help = 'Import all games from CSV file and the date: games date'
 
     def add_arguments(self, parser):
         parser.add_argument('game_csv', type=str, help='The path to the Game CSV file')
@@ -20,6 +21,7 @@ class Command(BaseCommand):
 
         self.game_import(game_csv, date_of_match)
 
+    # Imports games, must be run AFTER player_import since games reference Players
     def game_import(self, csv_file_path, date):
         self.stdout.write('Starting game import...')
         with open(csv_file_path, newline='', encoding='utf-8-sig') as csvfile:
@@ -32,13 +34,11 @@ class Command(BaseCommand):
                 if match:
                     board_letter = match.group(1)
                     board_number = int(match.group(2))
-                #print(board_letter, board_number)
 
                 white = None
                 if row['White']:
                     try:
                         last_name_white, first_name_white = row['White'].split(', ')
-                        #print("last name: " + last_name_white, "first name: " + first_name_white)
                         white = Player.objects.get(last_name=last_name_white, first_name=first_name_white)
                     except Player.DoesNotExist:
                         self.stdout.write(f"White player '{row['White']}' not found.")
@@ -47,7 +47,6 @@ class Command(BaseCommand):
                 if row['Black']:
                     try:
                         last_name_black, first_name_black = row['Black'].split(', ')
-                        #print("last name: " + last_name_black, "first name: " + first_name_black)
                         black = Player.objects.get(last_name=last_name_black, first_name=first_name_black)
                     except Player.DoesNotExist:
                         self.stdout.write(f"Black player '{row['Black']}' not found.")

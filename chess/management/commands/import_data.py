@@ -5,8 +5,9 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 
+''' This file contains all the custom functions for importing player and class data via csv files to establish the database '''
 class Command(BaseCommand):
-    help = 'Import all data from CSV files: volunteers, classes, and players'
+    help = 'Import all data from CSV files: volunteers classes players'
 
     def add_arguments(self, parser):
         parser.add_argument('volunteers_csv', type=str, help='The path to the volunteers CSV file')
@@ -22,6 +23,7 @@ class Command(BaseCommand):
         self.class_import(classes_csv)
         self.player_import(players_csv)
 
+    # Imports volunteers, must be run BEFORE class_import if these volunteers are teachers of a class
     def volunteer_import(self, csv_file_path):
         self.stdout.write('Starting volunteer import...')
         with open(csv_file_path, newline='', encoding='utf-8-sig') as csvfile:
@@ -59,6 +61,7 @@ class Command(BaseCommand):
 
         self.stdout.write('Volunteer import completed.')
 
+    # Imports classes, must be run BEFORE player_import if you need to assign players to a class
     def class_import(self, csv_file_path):
         self.stdout.write('Starting class import...')
         with open(csv_file_path, newline='', encoding='utf-8-sig') as csvfile:
@@ -100,6 +103,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"Error importing class {row.get('name', 'unknown')}: {str(e)}")
         self.stdout.write('Class import completed.')
 
+    # Imports players, must be run AFTER class_import and volunteer_import to add these players to classes
     def player_import(self, csv_file_path):
         self.stdout.write('Starting player import...')
         with open(csv_file_path, newline='', encoding='utf-8-sig') as csvfile:
@@ -107,7 +111,6 @@ class Command(BaseCommand):
 
             for row in reader:
                 if row.get('lesson_class'):
-                    print(row['lesson_class'])
                     try:
                         lesson_class = LessonClass.objects.get(name=row.get('lesson_class'))
                     except LessonClass.DoesNotExist:

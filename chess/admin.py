@@ -14,8 +14,6 @@ class UserAdmin(BaseUserAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
-#admin.site.register(Club)
 admin.site.register(Player)
 admin.site.register(LessonClass)
-#admin.site.register(RegisteredUser)
 admin.site.register(Game)

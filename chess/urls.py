@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 
 from .views import (login_view, signup_view,
-                    home_view, search_results, update_games, get_ratings_sheet,
+                    home_view, update_games, get_ratings_sheet,
                     manual_change_view,
                     input_results_view, get_players, save_games, download_ratings, download_existing_ratings_sheet,
                     pair_view, new_pairings, download_pairings,

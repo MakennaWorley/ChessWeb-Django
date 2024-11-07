@@ -23,7 +23,6 @@ def write_ratings():
 
     date = datetime.now().strftime('%m-%d-%Y')
 
-    # Save the file in a location accessible for downloads (e.g., media/ratings)
     new_file_path = os.path.join(settings.BASE_DIR, 'files','ratings', f'Ratings_{date}.xlsx')
     os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
     workbook.save(new_file_path)
@@ -36,7 +35,6 @@ def write_pairings(submitted_date):
     workbook = load_workbook(file_path)
     sheet = workbook.active
 
-    # Define bold font
     bold_font = Font(bold=True)
 
     games = Game.objects.filter(date_of_match=submitted_date, is_active=True)
