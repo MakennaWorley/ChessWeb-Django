@@ -70,6 +70,10 @@
         </div>
     </div>
 
-    <script src="{% static 'main.js' %}"></script>
+    <script>
+        const getPairingsSheetUrl = "{% url 'get_pairings_sheet' %}";
+        const saveGamesUrl = {% url 'save_games' %};
+    </script>
+    <script src="{% static 'utils.js' %}"></script>
     <script src="{% static 'input_results.js' %}"></script>
 {% endblock %}

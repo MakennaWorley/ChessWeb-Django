@@ -1,11 +1,11 @@
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
 document.addEventListener('DOMContentLoaded', function () {
     const dateSubmitBtn = document.getElementById('dateSubmitBtn');
     const gameModal = document.getElementById('gameModal');
     const closeModal = document.getElementsByClassName('close')[0];
     const gamesTableBody = document.getElementById('gamesTableBody');
     const selectedDateSpan = document.getElementById('selectedDate');
-
-    let cachedPlayers = null;
 
     dateSubmitBtn.addEventListener('click', async function (event) {
         event.preventDefault();
@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (formattedDate) {
             try {
-                const response = await fetch("{% url 'update_games' %}", {
+                const response = await fetch(getPairingsSheetUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
+                        'X-CSRFToken': csrfToken,
                     },
                     body: JSON.stringify({game_date: formattedDate})
                 });
@@ -102,18 +102,16 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.overflow = 'auto';
 
         try {
-            const response = await fetch("{% url 'save_games' %}", {
+            const response = await fetch(saveGamesUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': csrfToken,
                 },
                 body: JSON.stringify({game_date: formattedDate, games: gamesData})
             });
 
-            if (response.status === 401) {
-                window.location.href = '{% url "login" %}';
-            } else if (!response.ok) {
+            if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
                 let errorMessage = 'There was a problem saving the game results.';
 

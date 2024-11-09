@@ -12,14 +12,14 @@ form.addEventListener('change', function (event) {
 
     if (selectedDataType === 'games') {
         datePicker.style.display = '';
-        fetchGames();
+        fetchPairingsSheet();
     } else {
         datePicker.style.display = 'none';
     }
 });
 
-gameDateSelect.addEventListener('change', showGames);
+gameDateSelect.addEventListener('change', fetchPairingsSheet);
 
 document.addEventListener('DOMContentLoaded', function () {
-    fetchPlayers();
+    fetchRatingsSheet();
 });

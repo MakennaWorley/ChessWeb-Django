@@ -54,7 +54,65 @@ def get_ratings_sheet(request):
                                                                                                      '-grade',
                                                                                                      'last_name',
                                                                                                      'first_name')
-    return render(request, 'chess/ratings_sheet.html', {'players': players})
+    player_data = []
+
+    for player in players:
+        im_rating = 0
+
+        if player.beginning_rating:
+            im_rating = player.improved_rating()
+
+        player_data.append({
+            'name': player.name(),
+            'rating': str(player.rating),
+            'improved_rating': im_rating,
+            'grade': str(player.grade),
+            'lesson_class': player.lesson_class.name if player.lesson_class else 'N/A',
+            'parent_or_guardian': player.parent_or_guardian,
+            'email': player.email,
+            'phone': player.phone,
+        })
+
+    return JsonResponse({'players': player_data})
+
+
+def get_pairings_sheet(request):
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+            game_date = body.get('game_date')
+
+            if not game_date:
+                return JsonResponse({'status': 'error', 'message': 'No game date provided'}, status=400)
+
+            games = Game.objects.filter(date_of_match=game_date, is_active=True).all()
+
+            if not games.exists():
+                return JsonResponse({'status': 'error', 'message': f'No games found for date {game_date}'}, status=404)
+
+            games_data = []
+            board_index = {board: index for index, board in enumerate(BOARDS)}
+
+            for game in games:
+                result = '' if game.result in ['NONE', 'U'] else game.result
+
+                games_data.append({
+                    'board': game.get_board(),
+                    'white_player': game.white.name() if game.white else 'N/A',
+                    'result': result,
+                    'black_player': game.black.name() if game.black else 'N/A',
+                })
+
+            games_data.sort(key=lambda game: board_index.get(game['board'], float('inf')))
+
+            return JsonResponse({'games': games_data}, status=200)
+
+
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 
 # View relating to the login page
@@ -111,54 +169,16 @@ def register(request):
     return render(request, 'chess/signup.html', {'form': form})
 
 
-# View and Functions relating to the home page
+# View relating to the home page
 def home_view(request):
     games_by_date = Game.objects.filter(is_active=True).values('date_of_match').annotate(
         game_count=Count('id')).order_by('-date_of_match')
 
-    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
-                                                                                                     '-grade',
-                                                                                                     'last_name',
-                                                                                                     'first_name')
-
     context = {
-        'players': players,
         'games_by_date': games_by_date,
     }
 
     return render(request, 'chess/home.html', context)
-
-
-def update_games(request):
-    if request.method == 'POST':
-        try:
-            body = json.loads(request.body)
-            game_date = body.get('game_date')
-
-            games = Game.objects.filter(date_of_match=game_date, is_active=True).all()
-
-            games_data = []
-            for game in games:
-                if game.result == 'NONE' or game.result == 'U':
-                    result = ''
-                else:
-                    result = game.result
-
-                games_data.append({
-                    'board': game.get_board(),
-                    'white': game.white.name() if game.white else 'N/A',
-                    'black': game.black.name() if game.black else 'N/A',
-                    'result': result
-                })
-
-            return JsonResponse({'games': games_data}, status=200)
-
-        except Exception as e:
-            # Return an error response in case of any issues
-            return JsonResponse({'error': str(e)}, status=400)
-
-            # Return an error response if the request is not a POST request
-        return JsonResponse({'error': 'Invalid request method.'}, status=405)
 
 
 # View relating to the manual change page
@@ -544,16 +564,24 @@ def download_pairings(request):
         if form.is_valid():
             date_of_match = form.cleaned_data['date']
 
-            file_name = f'Pairings_{date_of_match}.xlsx'
-            file_path = os.path.join(CREATED_PAIRING_FILES_DIR, file_name)
+            try:
+                file_path = write_pairings(date_of_match)
+                file_name = f'Pairings_{date_of_match}.xlsx'
 
-            file_path = write_pairings(date_of_match)
-
-            with open(file_path, 'rb') as f:
-                response = HttpResponse(f.read(),
-                                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                response['Content-Disposition'] = f'attachment; filename=Pairings_{date_of_match}.xlsx'
-                return response
+                # Serve the file if it exists
+                with open(file_path, 'rb') as f:
+                    response = HttpResponse(
+                        f.read(),
+                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+                    response['Content-Disposition'] = f'attachment; filename={file_name}'
+                    return response
+            except FileNotFoundError:
+                raise Http404("File not found")
+            except Exception as e:
+                # Log or handle other potential errors
+                print(f"Error generating pairings file: {e}")
+                raise Http404("An error occurred while creating the pairing file.")
     else:
         form = PairingDateForm()
 

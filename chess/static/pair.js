@@ -5,8 +5,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const newGamesTableBody = document.getElementById('newGamesTableBody');
     const selectedDateSpan = document.getElementById('selectedDateDisplay');
 
-    let cachedPlayers = null;
-
     dateSubmitBtn.addEventListener('click', async function (event) {
         event.preventDefault();
         const selectedDate = document.getElementById('selectedDate').value;
@@ -81,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        fetch("{% url 'new_pairings' %}", {
+        fetch(newPairingsUrl, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': '{{ csrf_token }}'

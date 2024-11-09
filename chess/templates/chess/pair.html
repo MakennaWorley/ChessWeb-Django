@@ -51,6 +51,9 @@
         </div>
     </div>
 
-    <script src="{% static 'main.js' %}"></script>
+    <script>
+        const newPairingsUrl = "{% url 'new_pairings' %}";
+    </script>
+    <script src="{% static 'utils.js' %}"></script>
     <script src="{% static 'pair.js' %}"></script>
 {% endblock %}

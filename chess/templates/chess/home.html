@@ -12,7 +12,7 @@
                 <select id="game-date" name="game-date">
                     {% for game in games_by_date %}
                         <option value="{{ game.date_of_match }}">{{ game.date_of_match }}</option>
-                        {% endfor %}
+                    {% endfor %}
                 </select>
             </div>
         </form>
@@ -24,6 +24,10 @@
         </div>
     </div>
     
-    <script src="{% static 'main.js' %}"></script>
+    <script>
+        const getPairingsSheetUrl = "{% url 'get_pairings_sheet' %}";
+        const getRatingsSheetUrl = "{% url 'get_ratings_sheet' %}";
+    </script>
+    <script src="{% static 'utils.js' %}"></script>
     <script src="{% static 'home.js' %}"></script>
 {% endblock %}
