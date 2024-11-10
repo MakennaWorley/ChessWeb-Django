@@ -4,18 +4,6 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-'''class Club(models.Model):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=15, unique=True)
-
-    modified_by = models.ForeignKey(User, on_delete=models.RESTRICT)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    end_at = models.DateTimeField(default=None)
-
-    def __str__(self):
-        return self.name'''
-
 
 class Player(models.Model):
     last_name = models.CharField(max_length=100)
@@ -39,7 +27,6 @@ class Player(models.Model):
                                      null=True, blank=True)
     opponent_three = models.ForeignKey('self', on_delete=models.RESTRICT, related_name='three_times_ago_opponent',
                                        null=True, blank=True)
-    # club = models.ForeignKey(Club, on_delete=models.RESTRICT)
 
     modified_by = models.ForeignKey(User, default="import", on_delete=models.RESTRICT)
     is_active = models.BooleanField(default=True)
@@ -58,24 +45,6 @@ class Player(models.Model):
     def improved_rating(self):
         return self.rating - self.beginning_rating
 
-    def search_view(self):
-        lesson_class = self.lesson_class
-        parent_or_guardian = self.parent_or_guardian
-        email = self.email
-        phone = self.phone
-
-        if not lesson_class:
-            lesson_class = "No class assigned"
-        if not parent_or_guardian:
-            parent_or_guardian = "No parent or guardian found"
-        if not email:
-            email = "No email found"
-        if not phone:
-            phone = "No phone found"
-
-        return self.name() + " | " + str(self.rating) + " | " + str(
-            self.grade) + " | " + lesson_class + " | " + parent_or_guardian + " | " + email + " | " + phone
-
     def update_rating(self, new_rating, opponent, modified_by):
         # Mark the current player instance as inactive and set the end date
         self.is_active = False
@@ -87,7 +56,6 @@ class Player(models.Model):
             new_rating = 100
 
         # Create a new player instance with the updated rating and `is_active=True`
-        # Updates player's last 3 opponents
         new_player = Player.objects.create(
             last_name=self.last_name,
             first_name=self.first_name,
@@ -115,7 +83,6 @@ class LessonClass(models.Model):
     name = models.CharField(max_length=100)
     teacher = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='teacher')
     co_teacher = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='co_teacher', blank=True, null=True)
-    # club = models.ForeignKey(Club, on_delete=models.RESTRICT)
 
     modified_by = models.ForeignKey(User, on_delete=models.RESTRICT)
     is_active = models.BooleanField(default=True)
@@ -128,7 +95,6 @@ class LessonClass(models.Model):
 
 class RegisteredUser(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # club = models.ForeignKey(Club, on_delete=models.RESTRICT, blank=True, null=True)
     is_director = models.BooleanField(default=False)
 
     def __str__(self):
@@ -147,7 +113,6 @@ class Game(models.Model):
         UNKNOWN = 'U'
 
     date_of_match = models.DateField()
-    # club = models.ForeignKey(Club, on_delete=models.RESTRICT)
     white = models.ForeignKey(Player, on_delete=models.RESTRICT, related_name='game_as_white', blank=True, null=True)
     black = models.ForeignKey(Player, on_delete=models.RESTRICT, related_name='game_as_black', blank=True, null=True)
     board_letter = models.CharField(max_length=1)
