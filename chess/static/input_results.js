@@ -13,69 +13,82 @@ document.addEventListener('DOMContentLoaded', function () {
         const formattedDate = formatDate(selectedDate);
 
         if (formattedDate) {
-            try {
-                const response = await fetch(getPairingsSheetUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken,
-                    },
-                    body: JSON.stringify({game_date: formattedDate})
-                });
-
-                const data = await response.json();
-                if (data.games) {
-                    gamesTableBody.innerHTML = '';
-                    const boards = [
-                        ...Array.from({length: 5}, (_, i) => `G-${i + 1}`),
-                        ...Array.from({length: 6}, (_, i) => `H-${i + 1}`),
-                        ...Array.from({length: 22}, (_, i) => `I-${i + 1}`),
-                        ...Array.from({length: 22}, (_, i) => `J-${i + 1}`)
-                    ];
-
-                    for (const board of boards) {
-                        const game = data.games.find(game => game.board === board);
-                        const row = `
-                                <tr>
-                                    <td>${board}</td>
-                                    <td>
-                                        <select class="player-select" data-player="white">
-                                            ${await populatePlayerDropdown(game ? game.white : 'N/A')}
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select name="result-${board}" class="result-select">
-                                            <option value="NONE" ${game && game.result === 'U' ? 'selected' : ''}></option>
-                                            <option value="White" ${game && game.result === 'White' ? 'selected' : ''}>White</option>
-                                            <option value="Black" ${game && game.result === 'Black' ? 'selected' : ''}>Black</option>
-                                            <option value="Draw" ${game && game.result === 'Draw' ? 'selected' : ''}>Draw</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select class="player-select" data-player="black">
-                                            ${await populatePlayerDropdown(game ? game.black : 'N/A')}
-                                        </select>
-                                    </td>
-                                </tr>
-                                `;
-                        gamesTableBody.insertAdjacentHTML('beforeend', row);
-                    }
-
-                    document.querySelectorAll('.player-select').forEach(select => {
-                        select.addEventListener('change', function () {
-                            handlePlayerSelection(this);
-                        });
+            if (cachedGames && cachedGameDate === formattedDate) {
+                await displayGamesInModal(cachedGames);
+                selectedDateSpan.textContent = formattedDate;
+                gameModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            } else {
+                try {
+                    const response = await fetch(getGamesUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        body: JSON.stringify({game_date: formattedDate})
                     });
 
-                    selectedDateSpan.textContent = formattedDate;
-                    gameModal.style.display = 'block';
-                    document.body.style.overflow = 'hidden';
+                    const data = await response.json();
+
+                    if (data.games) {
+                        cachedGames = data.games;
+                        cachedGameDate = formattedDate;
+
+                        await displayGamesInModal(data.games);
+                        selectedDateSpan.textContent = formattedDate;
+                        gameModal.style.display = 'block';
+                        document.body.style.overflow = 'hidden';
+                    }
+                } catch (error) {
+                    console.error('Error fetching games:', error);
                 }
-            } catch (error) {
-                console.error('Error fetching games:', error);
             }
         }
     });
+
+    async function displayGamesInModal(games) {
+        if (!cachedPlayers) {
+            await fetchPlayers();
+        }
+
+        gamesTableBody.innerHTML = '';
+
+        for (const board of BOARDS) {
+            const game = games.find(game => game.board === board) || {};
+
+            const row = `
+                <tr>
+                    <td>${board}</td>
+                    <td>
+                        <select class="player-select" data-player="white_player">
+                            ${await populatePlayerDropdown(game.white_player || 'N/A')}
+                        </select>
+                    </td>
+                    <td>
+                        <select name="result-${board}" class="result-select">
+                            <option value="NONE" ${game.result === 'U' ? 'selected' : ''}></option>
+                            <option value="White" ${game.result === 'White' ? 'selected' : ''}>White</option>
+                            <option value="Black" ${game.result === 'Black' ? 'selected' : ''}>Black</option>
+                            <option value="Draw" ${game.result === 'Draw' ? 'selected' : ''}>Draw</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="player-select" data-player="black_player">
+                            ${await populatePlayerDropdown(game.black_player || 'N/A')}
+                        </select>
+                    </td>
+                </tr>
+            `;
+            gamesTableBody.insertAdjacentHTML('beforeend', row);
+        }
+
+        document.querySelectorAll('.player-select').forEach(select => {
+            select.addEventListener('change', function () {
+                handlePlayerSelection(this);
+            });
+        });
+    }
 
     document.getElementById('gameResultsForm').addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -87,9 +100,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         rows.forEach(row => {
             const board = row.querySelector('td:first-child')?.textContent || 'Unknown Board';
-            const whiteSelect = row.querySelector('select[data-player="white"]');
+            const whiteSelect = row.querySelector('select[data-player="white_player"]');
             const resultSelect = row.querySelector('.result-select');
-            const blackSelect = row.querySelector('select[data-player="black"]');
+            const blackSelect = row.querySelector('select[data-player="black_player"]');
 
             const white = whiteSelect ? whiteSelect.value : 'N/A';
             const result = resultSelect ? resultSelect.value : 'NONE';

@@ -4,9 +4,9 @@ from django.contrib.auth.decorators import login_required
 
 from .views import (login_view, signup_view,
                     home_view,
-                    get_players, get_ratings_sheet, get_pairings_sheet,
+                    get_players, get_games, get_ratings_sheet,
                     manual_change_view,
-                    input_results_view, get_players, save_games, download_ratings, download_existing_ratings_sheet,
+                    input_results_view, save_games, download_ratings, download_existing_ratings_sheet,
                     pair_view, new_pairings, download_pairings,
                     help_view, )
 
@@ -18,8 +18,8 @@ urlpatterns = [
     path('home/', login_required(home_view), name='home'),
 
     path('api/get_players', login_required(get_players), name='get_players'),
+    path('api/get_games', login_required(get_games), name='get_games'),
     path('api/get_ratings_sheet', login_required(get_ratings_sheet), name='get_ratings_sheet'),
-    path('api/get_pairings_sheet', login_required(get_pairings_sheet), name='get_pairings_sheet'),
 
     path('manual_change/', login_required(manual_change_view), name='manual_change'),
 

@@ -40,8 +40,7 @@ def get_players(request):
     players_data = [
         {
             "id": player.id,
-            "first_name": player.first_name,
-            "last_name": player.last_name
+            "name": player.name(),
         }
         for player in players
     ]
@@ -49,34 +48,7 @@ def get_players(request):
     return JsonResponse({'players': players_data})
 
 
-def get_ratings_sheet(request):
-    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
-                                                                                                     '-grade',
-                                                                                                     'last_name',
-                                                                                                     'first_name')
-    player_data = []
-
-    for player in players:
-        im_rating = 0
-
-        if player.beginning_rating:
-            im_rating = player.improved_rating()
-
-        player_data.append({
-            'name': player.name(),
-            'rating': str(player.rating),
-            'improved_rating': im_rating,
-            'grade': str(player.grade),
-            'lesson_class': player.lesson_class.name if player.lesson_class else 'N/A',
-            'parent_or_guardian': player.parent_or_guardian,
-            'email': player.email,
-            'phone': player.phone,
-        })
-
-    return JsonResponse({'players': player_data})
-
-
-def get_pairings_sheet(request):
+def get_games(request):
     if request.method == 'POST':
         try:
             body = json.loads(request.body)
@@ -113,6 +85,45 @@ def get_pairings_sheet(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
+
+def get_ratings_sheet(request):
+    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
+                                                                                                     '-grade',
+                                                                                                     'last_name',
+                                                                                                     'first_name')
+    player_data = []
+
+    for player in players:
+        im_rating = 0
+        grade = ''
+        player_parent_or_guardian = ''
+        player_email = ''
+        player_phone = ''
+
+        if player.beginning_rating:
+            im_rating = player.improved_rating()
+        if player.grade:
+            grade = str(player.grade)
+        if player.parent_or_guardian:
+            player_parent_or_guardian = player.parent_or_guardian
+        if player.email:
+            player_email = player.email
+        if player.phone:
+            player_phone = player.phone
+
+        player_data.append({
+            'name': player.name(),
+            'rating': str(player.rating),
+            'improved_rating': im_rating,
+            'grade': grade,
+            'lesson_class': player.lesson_class.name if player.lesson_class else 'N/A',
+            'parent_or_guardian': player_parent_or_guardian,
+            'email': player_email,
+            'phone': player_phone,
+        })
+
+    return JsonResponse({'players': player_data})
 
 
 # View relating to the login page
@@ -236,12 +247,12 @@ def save_games(request):
                 game.get_board(): game for game in games_db
             }
 
-            # games not in the db
+            # Games not in the db
             new_games_to_db = {
                 board: details for board, details in games_keyed.items() if board not in games_db_keyed
             }
 
-            # games not in data
+            # Games not in data
             games_not_in_data = {
                 board: game for board, game in games_db_keyed.items() if board not in games_keyed
             }
@@ -294,9 +305,9 @@ def save_games(request):
 
                 # Deactivate games
                 for board, game in games_not_in_data.items():
-                    game.is_active = False
+                    '''game.is_active = False
                     game.end_at = timezone.now()
-                    game.save()
+                    game.save()'''
                     deactivated_games_report.append(f"Deactivated game for board {board}")
 
                 # Update existing games
@@ -568,7 +579,6 @@ def download_pairings(request):
                 file_path = write_pairings(date_of_match)
                 file_name = f'Pairings_{date_of_match}.xlsx'
 
-                # Serve the file if it exists
                 with open(file_path, 'rb') as f:
                     response = HttpResponse(
                         f.read(),
@@ -579,8 +589,6 @@ def download_pairings(request):
             except FileNotFoundError:
                 raise Http404("File not found")
             except Exception as e:
-                # Log or handle other potential errors
-                print(f"Error generating pairings file: {e}")
                 raise Http404("An error occurred while creating the pairing file.")
     else:
         form = PairingDateForm()
