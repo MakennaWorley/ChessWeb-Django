@@ -1,3 +1,5 @@
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
 document.addEventListener('DOMContentLoaded', function () {
     const dateSubmitBtn = document.getElementById('dateSubmitBtn');
     const gameModal = document.getElementById('gameModal');
@@ -17,28 +19,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const formattedDate = formatDate(selectedDate);
 
         if (formattedDate) {
+            if (!cachedPlayers) {
+                await fetchPlayers();
+            }
+
             newGamesTableBody.innerHTML = '';
 
             selectedDateSpan.textContent = formattedDate;
 
-            const boards = [
-                ...Array.from({length: 5}, (_, i) => `G-${i + 1}`),
-                ...Array.from({length: 6}, (_, i) => `H-${i + 1}`),
-                ...Array.from({length: 22}, (_, i) => `I-${i + 1}`),
-                ...Array.from({length: 22}, (_, i) => `J-${i + 1}`)
-            ];
-
-            for (const board of boards) {
+            for (const board of BOARDS) {
                 const row = `
                         <tr>
                             <td>${board}</td>
                             <td>
-                                <select class="player-select" data-player="white">
+                                <select class="player-select" data-player="white_player">
                                     ${await populatePlayerDropdown('N/A')}
                                 </select>
                             </td>
                             <td>
-                                <select class="player-select" data-player="black">
+                                <select class="player-select" data-player="black_player">
                                     ${await populatePlayerDropdown('N/A')}
                                 </select>
                             </td>
@@ -82,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch(newPairingsUrl, {
             method: 'POST',
             headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
+                'X-CSRFToken': csrfToken,
             },
             body: JSON.stringify({
                 game_date: formattedDate,
