@@ -24,7 +24,6 @@ urlpatterns = [
     path('manual_change/', login_required(manual_change_view), name='manual_change'),
 
     path('input_results/', login_required(input_results_view), name='input_results'),
-        path('api/players/', login_required(get_players), name='get_players'),
         path('save_games/', login_required(save_games), name='save_games'),
         path('download_ratings/', login_required(download_ratings), name='download_ratings'),
         path('download_existing_ratings_sheet/', login_required(download_existing_ratings_sheet), name='download_existing_ratings_sheet'),

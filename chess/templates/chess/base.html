@@ -20,6 +20,9 @@
 
         <nav>
             <ul>
+                {% if user.is_superuser %}
+                    <li><a href="{% url 'admin:index' %}">Admin</a></li>
+                {% endif %}
                 <li><a href="{% url 'home' %}">Home</a></li>
                 <li><a href="{% url 'manual_change' %}">Manual Change</a></li>
                 <li><a href="{% url 'input_results' %}">Input Results</a></li>
