@@ -69,6 +69,7 @@ def get_games(request):
                 result = '' if game.result in ['NONE', 'U'] else game.result
 
                 games_data.append({
+                    "id": game.id,
                     'board': game.get_board(),
                     'white_player': game.white.name() if game.white else 'N/A',
                     'result': result,
@@ -88,42 +89,43 @@ def get_games(request):
 
 
 def get_ratings_sheet(request):
-    players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
-                                                                                                     '-grade',
-                                                                                                     'last_name',
-                                                                                                     'first_name')
-    player_data = []
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+            show_volunteers = body.get('show_volunteers')
 
-    for player in players:
-        im_rating = 0
-        grade = ''
-        player_parent_or_guardian = ''
-        player_email = ''
-        player_phone = ''
+            if show_volunteers:
+                players = Player.objects.filter(active_member=True, is_active=True).order_by('-rating',
+                                                                                             '-grade',
+                                                                                             'last_name',
+                                                                                             'first_name')
+            else:
+                players = Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).order_by('-rating',
+                                                                                                                 '-grade',
+                                                                                                                 'last_name',
+                                                                                                                 'first_name')
+            player_data = []
 
-        if player.beginning_rating:
-            im_rating = player.improved_rating()
-        if player.grade:
-            grade = str(player.grade)
-        if player.parent_or_guardian:
-            player_parent_or_guardian = player.parent_or_guardian
-        if player.email:
-            player_email = player.email
-        if player.phone:
-            player_phone = player.phone
+            for player in players:
+                player_data.append({
+                    'id': player.id,
+                    'name': player.name(),
+                    'rating': str(player.rating),
+                    'improved_rating': player.improved_rating() if player.beginning_rating else '',
+                    'grade': str(player.grade) if player.grade else '',
+                    'lesson_class': player.lesson_class.name if player.lesson_class else '',
+                    'parent_or_guardian': player.parent_or_guardian if player.parent_or_guardian else '',
+                    'email': player.email if player.email else '',
+                    'phone': player.phone if player.phone else '',
+                })
 
-        player_data.append({
-            'name': player.name(),
-            'rating': str(player.rating),
-            'improved_rating': im_rating,
-            'grade': grade,
-            'lesson_class': player.lesson_class.name if player.lesson_class else 'N/A',
-            'parent_or_guardian': player_parent_or_guardian,
-            'email': player_email,
-            'phone': player_phone,
-        })
+            return JsonResponse({'players': player_data})
 
-    return JsonResponse({'players': player_data})
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 
 # View relating to the login page
@@ -187,14 +189,11 @@ def home_view(request):
 
     context = {
         'games_by_date': games_by_date,
+        "email": settings.MY_EMAIL,
+        "phone": settings.MY_PHONE_NUMBER,
     }
 
     return render(request, 'chess/home.html', context)
-
-
-# View relating to the manual change page
-def manual_change_view(request):
-    return render(request, 'chess/manual_change.html', )
 
 
 # View and Functions relating to the input results page
@@ -222,7 +221,9 @@ def input_results_view(request):
     context = {
         'form': form,
         'games_by_date': games_by_date,
-        'existing_files': existing_files
+        'existing_files': existing_files,
+        "email": settings.MY_EMAIL,
+        "phone": settings.MY_PHONE_NUMBER,
     }
     return render(request, 'chess/input_results.html', context)
 
@@ -305,9 +306,9 @@ def save_games(request):
 
                 # Deactivate games
                 for board, game in games_not_in_data.items():
-                    '''game.is_active = False
+                    game.is_active = False
                     game.end_at = timezone.now()
-                    game.save()'''
+                    game.save()
                     deactivated_games_report.append(f"Deactivated game for board {board}")
 
                 # Update existing games
@@ -413,7 +414,12 @@ def download_ratings(request):
 # View and Functions relating to the pair page
 def pair_view(request):
     form = PairingDateForm()
-    return render(request, 'chess/pair.html', {'form': form})
+    context = {
+        'form': form,
+        "email": settings.MY_EMAIL,
+        "phone": settings.MY_PHONE_NUMBER,
+    }
+    return render(request, 'chess/pair.html', context)
 
 
 def new_pairings(request):
@@ -424,7 +430,6 @@ def new_pairings(request):
 
             game_date = data.get('game_date')
             games = data.get('games')
-            separate_classes = data.get('separate_classes', False)
 
             used_boards = []
             pairings = []
@@ -467,17 +472,7 @@ def new_pairings(request):
                                                                           'first_name'))
 
             # Computer's paired games
-            if separate_classes:
-                krishnam_class = [p for p in unpaired_players if p.lesson_class.name == 'Krishnam']
-                sam_class = [p for p in unpaired_players if p.lesson_class.name == 'Sam']
-                other_class = [p for p in unpaired_players if p.lesson_class.name not in ['Krishnam', 'Sam']]
-            else:
-                other_class = unpaired_players
-
-            pairings = pair(other_class, pairings)
-            if separate_classes:
-                pair(krishnam_class, pairings)
-                pair(sam_class, pairings)
+            pairings = pair(unpaired_players, pairings)
 
             with transaction.atomic():
                 for i, pairing in enumerate(pairings):
@@ -524,7 +519,7 @@ def pair(unpaired_players, pairings):
 
     found_opponent = False
     player = unpaired_players[0]
-    opponent_list = [player.opponent_one, player.opponent_two]
+    opponent_list = [player.opponent_one, player.opponent_two, player.opponent_three]
 
     for i in range(1, len(unpaired_players)):
         if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 21:
@@ -594,8 +589,3 @@ def download_pairings(request):
         form = PairingDateForm()
 
     return render(request, 'chess/pair.html', {'form': form})
-
-
-# View relating to the help page
-def help_view(request):
-    return render(request, 'chess/help.html', )

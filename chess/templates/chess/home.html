@@ -2,20 +2,37 @@
 {% load static %}
 
 {% block content %}
-    <div class="">
-        <form id="data-selection-form" class="center" style="height:3rem; padding:.5rem">
-            <label><input type="radio" name="data_type" value="players" checked>Ratings</label>
-            <label><input type="radio" name="data_type" value="games">Pairings</label>
-            
-            <div id="date-picker" style="display:none;">
-                <label for="game-date">Select Date:</label>
-                <select id="game-date" name="game-date">
-                    {% for game in games_by_date %}
-                        <option value="{{ game.date_of_match }}">{{ game.date_of_match }}</option>
-                    {% endfor %}
-                </select>
+    <div>
+        <div class="block-container">
+            <div class="block-text">
+                <form id="data-selection-form" class="center" style="height:3rem; padding:.5rem">
+                    <label><input type="radio" name="data_type" value="players" checked>Ratings</label>
+                    <label><input type="radio" name="data_type" value="games">Pairings</label>
+                
+                    <div id="volunteer-toggle" style="display:block;">
+                        <label><input type="radio" name="volunteer-toggle" value="false" checked>Don't Show Volunteers</label>
+                        <label><input type="radio" name="volunteer-toggle" value="true">Show Volunteers</label>
+                    </div>
+                    
+                    <div id="date-picker" style="display:none;">
+                        <label for="game-date">Select Date:</label>
+                        <select id="game-date" name="game-date">
+                            {% for game in games_by_date %}
+                                <option value="{{ game.date_of_match }}">{{ game.date_of_match }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+    
+        <div id="help-text" class="center new-line">
+            Here are the ratings of the players as stored in the database. This is currently not displaying volunteers' ratings.
+        </div>
+        <div class="center new-line">
+            You can only edit player data and not game data since the game data is maintained by Input Results. Adding, Editing,
+            and Searching data coming in the next release!
+        </div>
     
         <div id="ratings_sheet">
         </div>

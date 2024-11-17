@@ -45,6 +45,10 @@ p {
     text-align: center;
 }
 
+.left {
+    text-align: left !important;
+}
+
 .new-line::after {
     content: "\A";
     display: block;
@@ -137,7 +141,7 @@ nav ul li a {
 }
 
 nav ul li a:hover {
-    background-color: var(--nav-bar);
+    background-color: var(--nav-bar-hover);
 }
 
 nav ul li button {

@@ -1,4 +1,5 @@
 let cachedRatings = null;
+let cachedRatingsVolunteers = false;
 let cachedPlayers = null;
 let cachedGames = null;
 let cachedGameDate  = null;
@@ -64,15 +65,23 @@ async function fetchGames() {
     }
 }
 
-async function fetchRatingsSheet() {
+async function fetchRatingsSheet(showVolunteers) {
     const ratingsSheetDiv = document.getElementById('ratings_sheet');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-    if (cachedRatings) {
+    if (cachedRatings && cachedRatingsVolunteers === showVolunteers) {
         ratingsSheetDiv.innerHTML = generateRatingsSheetHTML(cachedRatings);
     }
 
     try {
-        const response = await fetch(getRatingsSheetUrl);
+        const response = await fetch(getRatingsSheetUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({ show_volunteers: showVolunteers }),
+        });
         if (!response.ok) {
             throw new Error('Error reading data');
         }
