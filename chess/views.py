@@ -196,11 +196,6 @@ def home_view(request):
     return render(request, 'chess/home.html', context)
 
 
-# View relating to the manual change page
-def manual_change_view(request):
-    return render(request, 'chess/manual_change.html', )
-
-
 # View and Functions relating to the input results page
 def input_results_view(request):
     form = GameSaveForm()
@@ -435,7 +430,6 @@ def new_pairings(request):
 
             game_date = data.get('game_date')
             games = data.get('games')
-            separate_classes = data.get('separate_classes', False)
 
             used_boards = []
             pairings = []
@@ -478,18 +472,7 @@ def new_pairings(request):
                                                                           'first_name'))
 
             # Computer's paired games
-            if separate_classes:
-                # krishnam_class = [p for p in unpaired_players if p.lesson_class.name == 'Krishnam']
-                sam_class = [p for p in unpaired_players if p.lesson_class.name == 'Sam']
-                #other_class = [p for p in unpaired_players if p.lesson_class.name not in ['Krishnam', 'Sam']]
-                other_class = [p for p in unpaired_players if p.lesson_class.name not in ['Sam']]
-            else:
-                other_class = unpaired_players
-
-            pairings = pair(other_class, pairings)
-            if separate_classes:
-                # pair(krishnam_class, pairings)
-                pair(sam_class, pairings)
+            pairings = pair(unpaired_players, pairings)
 
             with transaction.atomic():
                 for i, pairing in enumerate(pairings):
