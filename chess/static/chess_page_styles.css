@@ -45,6 +45,10 @@ p {
     text-align: center;
 }
 
+.left {
+    text-align: left !important;
+}
+
 .new-line::after {
     content: "\A";
     display: block;

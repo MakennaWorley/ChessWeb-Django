@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -126,3 +127,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGOUT_REDIRECT_URL = 'login'
 LOGIN_URL = 'login'
+
+MY_EMAIL = config('MY_EMAIL', default="totally_my_email@email.com")
+MY_PHONE_NUMBER = config('MY_PHONE_NUMBER', default="Not-To-Day!")

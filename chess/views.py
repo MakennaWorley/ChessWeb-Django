@@ -189,6 +189,8 @@ def home_view(request):
 
     context = {
         'games_by_date': games_by_date,
+        "email": settings.MY_EMAIL,
+        "phone": settings.MY_PHONE_NUMBER,
     }
 
     return render(request, 'chess/home.html', context)
@@ -224,7 +226,9 @@ def input_results_view(request):
     context = {
         'form': form,
         'games_by_date': games_by_date,
-        'existing_files': existing_files
+        'existing_files': existing_files,
+        "email": settings.MY_EMAIL,
+        "phone": settings.MY_PHONE_NUMBER,
     }
     return render(request, 'chess/input_results.html', context)
 
@@ -415,7 +419,12 @@ def download_ratings(request):
 # View and Functions relating to the pair page
 def pair_view(request):
     form = PairingDateForm()
-    return render(request, 'chess/pair.html', {'form': form})
+    context = {
+        'form': form,
+        "email": settings.MY_EMAIL,
+        "phone": settings.MY_PHONE_NUMBER,
+    }
+    return render(request, 'chess/pair.html', context)
 
 
 def new_pairings(request):
@@ -597,8 +606,3 @@ def download_pairings(request):
         form = PairingDateForm()
 
     return render(request, 'chess/pair.html', {'form': form})
-
-
-# View relating to the help page
-def help_view(request):
-    return render(request, 'chess/help.html', )

@@ -24,10 +24,9 @@
                     <li><a href="{% url 'admin:index' %}">Admin</a></li>
                 {% endif %}
                 <li><a href="{% url 'home' %}">Home</a></li>
-                <li><a href="{% url 'manual_change' %}">Manual Change</a></li>
+                <!--<li><a href="{% url 'manual_change' %}">Manual Change</a></li>-->
                 <li><a href="{% url 'input_results' %}">Input Results</a></li>
                 <li><a href="{% url 'pair' %}">Pair</a></li>
-                <li><a href="{% url 'help' %}">Help</a></li>
                 <li>
                     <form method="post" action="{% url 'logout' %}" style="display:inline;">
                         {% csrf_token %}
@@ -45,6 +44,8 @@
     </div>
 </body>
 <footer>
+    <h2 class="center">Didn't find the answer you were looking for? Or have questions?</h2>
+    <p class="center new-line">Contact me at {{ email }} or text me at {{ phone }}</p>
     <p class="center">Created by Makenna Worley <a href="https://www.makennaworley.com" target="_blank">website</a></p>
 </footer>
 </html>
