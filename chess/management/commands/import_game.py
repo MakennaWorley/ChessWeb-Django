@@ -6,7 +6,6 @@ from chess.models import Player, Game
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-
 ''' This file contains the custom function for importing game data via csv files to establish the database '''
 class Command(BaseCommand):
     help = 'Import all games from CSV file and the date: games date'

@@ -6,12 +6,16 @@ import os
 from django.conf import settings
 from datetime import datetime
 
+
 def write_ratings():
     file_path = os.path.join(settings.BASE_DIR, 'files', 'RatingsTemplate.xlsx')
     workbook = load_workbook(file_path)
     sheet = workbook.active
 
-    students = Player.objects.filter(active_member=True, is_volunteer=False, is_active=True).order_by('-rating', '-grade', 'last_name', 'first_name')
+    students = Player.objects.filter(active_member=True, is_volunteer=False, is_active=True).order_by('-rating',
+                                                                                                      '-grade',
+                                                                                                      'last_name',
+                                                                                                      'first_name')
 
     start_row = 2
 
@@ -23,7 +27,7 @@ def write_ratings():
 
     date = datetime.now().strftime('%m-%d-%Y')
 
-    new_file_path = os.path.join(settings.BASE_DIR, 'files','ratings', f'Ratings_{date}.xlsx')
+    new_file_path = os.path.join(settings.BASE_DIR, 'files', 'ratings', f'Ratings_{date}.xlsx')
     os.makedirs(os.path.dirname(new_file_path), exist_ok=True)
     workbook.save(new_file_path)
 

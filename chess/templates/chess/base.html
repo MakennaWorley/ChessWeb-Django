@@ -8,39 +8,39 @@
     <script src="../../static/utils.js"></script>
 </head>
 <body>
-    {% if user.is_authenticated %}
-        <div class="block-container">
-            <div class="block-text">
-                <h1 class="center">Welcome, {{ user.username }}!</h1>
-                <p class="center">ChessWeb is a web based application designed for Oakwood Elementary's Chess Club with the main purpose of simplifying
-                    the process of updating ratings and pairing the members. It is designed and maintained by Makenna Worley using the Django
-                    framework.</p>
-            </div>
+{% if user.is_authenticated %}
+    <div class="block-container">
+        <div class="block-text">
+            <h1 class="center">Welcome, {{ user.username }}!</h1>
+            <p class="center">ChessWeb is a web based application designed for Oakwood Elementary's Chess Club with the
+                main purpose of simplifying the process of updating ratings and pairing the members. It is designed and
+                maintained by Makenna Worley using the Django framework.</p>
         </div>
-
-        <nav>
-            <ul>
-                {% if user.is_superuser %}
-                    <li><a href="{% url 'admin:index' %}">Admin</a></li>
-                {% endif %}
-                <li><a href="{% url 'home' %}">Home</a></li>
-                <li><a href="{% url 'input_results' %}">Input Results</a></li>
-                <li><a href="{% url 'pair' %}">Pair</a></li>
-                <li>
-                    <form method="post" action="{% url 'logout' %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="nav-button">
-                            Log Out
-                        </button>
-                    </form>
-                </li>
-            </ul>
-        </nav>
-    {% endif %}
-
-    <div class="content">
-        {% block content %} {%  endblock %}
     </div>
+
+    <nav>
+        <ul>
+            {% if user.is_superuser %}
+                <li><a href="{% url 'admin:index' %}">Admin</a></li>
+            {% endif %}
+            <li><a href="{% url 'home' %}">Home</a></li>
+            <li><a href="{% url 'input_results' %}">Input Results</a></li>
+            <li><a href="{% url 'pair' %}">Pair</a></li>
+            <li>
+                <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-button">
+                        Log Out
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </nav>
+{% endif %}
+
+<div class="content">
+    {% block content %} {% endblock %}
+</div>
 </body>
 <footer>
     <h2 class="center">Didn't find the answer you were looking for? Or have questions?</h2>
