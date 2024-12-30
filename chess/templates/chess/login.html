@@ -1,6 +1,12 @@
-{%  extends 'chess/base.html' %}
-
-{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessWeb</title>
+    <link rel="stylesheet" href="../../static/chess_page_styles.css">
+</head>
+<body>
     <div class="center">
         <h1>Log in to access ChessWeb</h1>
         <form method="POST">
@@ -10,4 +16,8 @@
         </form>
         <p>Don't have an account? <a href="{% url 'signup' %}">Create one here</a></p>
     </div>
-{% endblock %}
+</body>
+<footer>
+    <p class="center">Created by <a href="https://www.makennaworley.com" target="_blank">Makenna Worley</a></p>
+</footer>
+</html>

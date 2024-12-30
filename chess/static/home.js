@@ -24,12 +24,10 @@ form.addEventListener('change', function (event) {
         datePicker.style.display = 'none';
         volunteerToggle.style.display = '';
         if (showVolunteers === 'true') {
-            helpText.textContent = 'Here are the ratings of the players as stored in the database. This is currently ' +
-                'displaying volunteers\' ratings.';
+            helpText.innerHTML = 'Here are the ratings of the players as stored in the database. This is currently displaying volunteers\' ratings.';
             fetchRatingsSheet(true)
         } else {
-            helpText.textContent = 'Here are the ratings of the players as stored in the database. This is currently' +
-                'not displaying volunteers\' ratings.';
+            helpText.innerHTML = 'Here are the ratings of the players as stored in the database. This is currently <strong>NOT</strong> displaying volunteers\' ratings.';
             fetchRatingsSheet(false)
         }
     }
