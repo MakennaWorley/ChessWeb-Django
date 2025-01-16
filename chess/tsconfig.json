@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true,
+
+    "baseUrl": "./static",
+    "paths": {
+      "*": ["*"]
+    },
+
+    "allowJs": true,
+    "checkJs": true,
+
+    "target": "es2017",
+    "module": "commonjs",
+    "lib": ["es2017", "dom"],
+    "esModuleInterop": true
+  },
+  "include": ["**/*"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@material/web": "^2.2.0",
+    "material-icons": "^1.13.12",
+    "materialize-css": "^1.0.0"
+  }
+}
