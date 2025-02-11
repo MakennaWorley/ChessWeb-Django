@@ -88,11 +88,5 @@
         </div>
     </div>
 
-    <script>
-        const getPlayersUrl = "{% url 'get_players' %}";
-        const getGamesUrl = "{% url 'get_games' %}";
-        const saveGamesUrl = {% url 'save_games' %};
-    </script>
-    <script src="{% static 'utils.js' %}"></script>
-    <script src="{% static 'input_results.js' %}"></script>
+    <script src="{% static 'input_results.ts' %}"></script>
 {% endblock %}

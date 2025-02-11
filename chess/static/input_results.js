@@ -1,62 +1,63 @@
-const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("./utils");
 document.addEventListener('DOMContentLoaded', function () {
     const dateSubmitBtn = document.getElementById('dateSubmitBtn');
     const gameModal = document.getElementById('gameModal');
     const closeModal = document.getElementsByClassName('close')[0];
     const gamesTableBody = document.getElementById('gamesTableBody');
     const selectedDateSpan = document.getElementById('selectedDate');
-
-    dateSubmitBtn.addEventListener('click', async function (event) {
+    dateSubmitBtn === null || dateSubmitBtn === void 0 ? void 0 : dateSubmitBtn.addEventListener('click', async function (event) {
+        var _c;
         event.preventDefault();
-        const selectedDate = document.getElementById('game-date').value;
+        const selectedDate = ((_c = document.getElementById('game-date')) === null || _c === void 0 ? void 0 : _c.value) || '';
         const formattedDate = formatDate(selectedDate);
-
         if (formattedDate) {
             if (cachedGames && cachedGameDate === formattedDate) {
                 await displayGamesInModal(cachedGames);
-                selectedDateSpan.textContent = formattedDate;
-                gameModal.style.display = 'block';
+                if (selectedDateSpan)
+                    selectedDateSpan.textContent = formattedDate;
+                if (gameModal)
+                    gameModal.style.display = 'block';
                 document.body.style.overflow = 'hidden';
-            } else {
+            }
+            else {
                 try {
-                    const response = await fetch(getGamesUrl, {
+                    const response = await fetch(utils_1.getGamesUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken,
+                            'X-CSRFToken': utils_1.csrfToken,
                         },
-                        body: JSON.stringify({game_date: formattedDate})
+                        body: JSON.stringify({ game_date: formattedDate }),
                     });
-
                     const data = await response.json();
-
                     if (data.games) {
                         cachedGames = data.games;
                         cachedGameDate = formattedDate;
-
                         await displayGamesInModal(data.games);
-                        selectedDateSpan.textContent = formattedDate;
-                        gameModal.style.display = 'block';
+                        if (selectedDateSpan)
+                            selectedDateSpan.textContent = formattedDate;
+                        if (gameModal)
+                            gameModal.style.display = 'block';
                         document.body.style.overflow = 'hidden';
                     }
-                } catch (error) {
+                }
+                catch (error) {
                     console.error('Error fetching games:', error);
                 }
             }
         }
     });
-
     async function displayGamesInModal(games) {
         if (!cachedPlayers) {
             await fetchPlayers();
         }
-
+        if (!gamesTableBody)
+            return;
         gamesTableBody.innerHTML = '';
-
         for (const board of BOARDS) {
-            const game = games.find(game => game.board === board) || {};
-
+            const game = games.find((game) => game.board === board) || {};
             const row = `
                 <tr>
                     <td>${board}</td>
@@ -82,111 +83,72 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             gamesTableBody.insertAdjacentHTML('beforeend', row);
         }
-
-        document.querySelectorAll('.player-select').forEach(select => {
+        document.querySelectorAll('.player-select').forEach((select) => {
             select.addEventListener('change', function () {
                 handlePlayerSelection(this);
             });
         });
     }
-
-    document.getElementById('gameResultsForm').addEventListener('submit', async function (event) {
+    const gameResultsForm = document.getElementById('gameResultsForm');
+    gameResultsForm === null || gameResultsForm === void 0 ? void 0 : gameResultsForm.addEventListener('submit', async function (event) {
+        var _c;
         event.preventDefault();
-
-        const selectedDate = document.getElementById('game-date').value;
+        const selectedDate = ((_c = document.getElementById('game-date')) === null || _c === void 0 ? void 0 : _c.value) || '';
         const formattedDate = formatDate(selectedDate);
         const gamesData = [];
         const rows = document.querySelectorAll('#gamesTableBody tr');
-
-        rows.forEach(row => {
-            const board = row.querySelector('td:first-child')?.textContent || 'Unknown Board';
+        rows.forEach((row) => {
+            var _c;
+            const board = ((_c = row.querySelector('td:first-child')) === null || _c === void 0 ? void 0 : _c.textContent) || 'Unknown Board';
             const whiteSelect = row.querySelector('select[data-player="white_player"]');
             const resultSelect = row.querySelector('.result-select');
             const blackSelect = row.querySelector('select[data-player="black_player"]');
-
-            const white = whiteSelect ? whiteSelect.value : 'N/A';
-            const result = resultSelect ? resultSelect.value : 'NONE';
-            const black = blackSelect ? blackSelect.value : 'N/A';
-
-            gamesData.push({board, white, result, black});
+            const white = (whiteSelect === null || whiteSelect === void 0 ? void 0 : whiteSelect.value) || 'N/A';
+            const result = (resultSelect === null || resultSelect === void 0 ? void 0 : resultSelect.value) || 'NONE';
+            const black = (blackSelect === null || blackSelect === void 0 ? void 0 : blackSelect.value) || 'N/A';
+            gamesData.push({ board, white, result, black });
         });
-
-        gameModal.style.display = 'none';
+        if (gameModal)
+            gameModal.style.display = 'none';
         document.body.style.overflow = 'auto';
-
         try {
-            const response = await fetch(saveGamesUrl, {
+            const response = await fetch(utils_1.saveGamesUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
+                    'X-CSRFToken': utils_1.csrfToken,
                 },
-                body: JSON.stringify({game_date: formattedDate, games: gamesData})
+                body: JSON.stringify({ game_date: formattedDate, games: gamesData }),
             });
-
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
                 let errorMessage = 'There was a problem saving the game results.';
-
-                if (errorData && errorData.message) {
+                if (errorData === null || errorData === void 0 ? void 0 : errorData.message) {
                     errorMessage += `\nError details: ${errorData.message}`;
                 }
-
                 throw new Error(errorMessage);
-            } else {
+            }
+            else {
                 const data = await response.json();
                 if (data.status === 'success') {
-                    let successMessage = 'Game results sent successfully!';
-
-                    if (data.added_games && data.added_games.length > 0) {
-                        successMessage += `\n\nAdded games:\n- ${data.added_games.join('\n- ')}`;
-                    }
-                    if (data.deactivated_games && data.deactivated_games.length > 0) {
-                        successMessage += `\n\nDeactivated games:\n- ${data.deactivated_games.join('\n- ')}`;
-                    }
-                    if (data.updated_games && data.updated_games.length > 0) {
-                        successMessage += `\n\nUpdated games:\n- ${data.updated_games.join('\n- ')}`;
-                    }
-                    if (data.ratings && data.ratings.length > 0) {
-                        successMessage += `\n\nUpdated these player's ratings:\n- ${data.ratings.join('\n- ')}`;
-                    }
-
-                    alert(successMessage);
-                } else {
-                    let errorDetails = data.message || 'An unknown error occurred.';
-
-                    if (data.added_games && data.added_games.length > 0) {
-                        errorDetails += `\n\nAdded games:\n- ${data.added_games.join('\n- ')}`;
-                    }
-                    if (data.deactivated_games && data.deactivated_games.length > 0) {
-                        errorDetails += `\n\nDeactivated games:\n- ${data.deactivated_games.join('\n- ')}`;
-                    }
-                    if (data.updated_games && data.updated_games.length > 0) {
-                        errorDetails += `\n\nUpdated games:\n- ${data.updated_games.join('\n- ')}`;
-                    }
-                    if (data.ratings && data.ratings.length > 0) {
-                        errorDetails += `\n\nUpdated these player's ratings:\n- ${data.ratings.join('\n- ')}`;
-                    }
-
-                    alert(`Error sending game results:\n${errorDetails}`);
+                    alert('Game results sent successfully!');
                 }
             }
-        } catch (error) {
+        }
+        catch (error) {
             alert(`Error submitting game results: ${error.message || error}`);
             console.error('Error submitting game results:', error);
         }
     });
-
-    // Close the modal when the "close" button is clicked
-    closeModal.addEventListener('click', function () {
-        gameModal.style.display = 'none';
+    closeModal === null || closeModal === void 0 ? void 0 : closeModal.addEventListener('click', function () {
+        if (gameModal)
+            gameModal.style.display = 'none';
         document.body.style.overflow = 'auto';
     });
-
-    // Close the modal when clicking outside of the modal content
     window.addEventListener('click', function (event) {
         if (event.target === gameModal) {
-            gameModal.style.display = 'none';
+            if (gameModal)
+                gameModal.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
     });
