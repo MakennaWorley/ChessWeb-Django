@@ -85,6 +85,12 @@
                 </select><br>
                 <button type="submit">Download Pre-existing Ratings Sheet</button>
             </form>
+            <div>
+                <p class="indent">Click the button below to export all data from the database on active, non-volunteers players</p>
+                <a href="{% url 'download_player_data' %}">
+                    <button type="button">Export Player Data</button>
+                </a>
+            </div>
         </div>
     </div>
 

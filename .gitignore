@@ -164,3 +164,4 @@ github/
 chess/migrations/
 .idea/
 files/
+node_modules/

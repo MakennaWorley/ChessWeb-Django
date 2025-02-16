@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from .forms import SignUpForm, PairingDateForm, GameSaveForm
 from .models import RegisteredUser, Player, Game
-from .write_to_file import write_ratings, write_pairings
+from .write_to_file import write_ratings, write_pairings, export_player_data
 
 
 # Global Variables
@@ -403,6 +403,16 @@ def download_existing_ratings_sheet(request):
 
 def download_ratings(request):
     file_path = write_ratings()
+
+    with open(file_path, 'rb') as excel_file:
+        response = HttpResponse(excel_file.read(),
+                                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+        return response
+
+
+def download_player_data(request):
+    file_path = export_player_data()
 
     with open(file_path, 'rb') as excel_file:
         response = HttpResponse(excel_file.read(),
