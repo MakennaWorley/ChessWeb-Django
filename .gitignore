@@ -165,3 +165,4 @@ chess/migrations/
 .idea/
 files/
 node_modules/
+*.DS_Store
