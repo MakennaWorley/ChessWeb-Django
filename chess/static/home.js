@@ -17,16 +17,17 @@ form.addEventListener('change', function (event) {
         const selectedDate = gameDateSelect.value;
         datePicker.style.display = '';
         volunteerToggle.style.display = 'none';
-        helpText.textContent = `Here are the pairings from the selected date, ${selectedDate} with the current results as stored in the database. If a result has been entered incorrectly, please contact Makenna.`;
+        helpText.textContent = `Here are the pairings from the selected date, ${selectedDate} with the current results
+        as stored in the database. If a result has been entered incorrectly, please contact Makenna.`;
         fetchPairingsSheet();
     } else {
         datePicker.style.display = 'none';
         volunteerToggle.style.display = '';
         if (showVolunteers === 'true') {
-            helpText.textContent = 'Here are the ratings of the players as stored in the database. This is currently displaying volunteers\' ratings.';
+            helpText.innerHTML = 'Here are the ratings of the players as stored in the database. This is currently displaying volunteers\' ratings.';
             fetchRatingsSheet(true)
         } else {
-            helpText.textContent = 'Here are the ratings of the players as stored in the database. This is currently not displaying volunteers\' ratings.';
+            helpText.innerHTML = 'Here are the ratings of the players as stored in the database. This is currently <strong>NOT</strong> displaying volunteers\' ratings.';
             fetchRatingsSheet(false)
         }
     }

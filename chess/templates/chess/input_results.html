@@ -5,13 +5,16 @@
     <div class="block-container-list">
         <div class="block-text center">
             <h1>Update Game Results</h1>
-            <p class="indent">To update the results of a previously paired pairing sheet or make changes to the pairings sheet,
-                select the date of those games and click "Open Pairings". Make sure to hit "Submit Results" to save your changes!</p>
-            <p class="indent">After the success message pops up with a brief summary for which boards were updated and who's ratings
-                have changed, you can now download the ratings sheet and pair your next set of games in "Pair"!</p>
-            <p class="indent"><strong>If you put in the result wrong and change it in this form, the ratings will be off. Do NOT do this,
-                please contact me!</strong></p>
-            <p class="indent"><strong>If you pair a student vs volunteer the student's rating will NOT change!</strong></p>
+            <p class="indent">To update the results of a previously paired pairing sheet or make changes to the pairings
+                sheet, select the date of those games and click "Open Pairings". Make sure to hit "Submit Results" to
+                save your changes!</p>
+            <p class="indent">After the success message pops up with a brief summary for which boards were updated and
+                who's ratings have changed, you can now download the ratings sheet and pair your next set of games in
+                "Pair"!</p>
+            <p class="indent"><strong>If you put in the result wrong and change it in this form, the ratings will be
+                off. Do NOT do this, undo functionality coming in Release 1.2, until then contact me!</strong></p>
+            <p class="indent"><strong>If you pair a student vs volunteer the student's rating will NOT change!</strong>
+            </p>
 
             <div id="date-picker">
                 <label for="game-date">Select Date:</label>
@@ -27,8 +30,9 @@
                 <div class="modal-content">
                     <span class="close">&times;</span>
                     <h2>Game Results for <span id="selectedDate"></span></h2>
-                    <p class="new-line">Players can only play one game per meet! If a board was empty or a player did not make it, scroll to
-                        the bottom to the bottom of the list of players to find "N/A" which will remove that player/game from the database.</p>
+                    <p class="new-line">Players can only play one game per meet! If a board was empty or a player did
+                        not make it, scroll to the bottom to the bottom of the list of players to find "N/A" which will
+                        remove that player/game from the database.</p>
 
                     <form id="gameResultsForm" method="POST" action="#">
                         {% csrf_token %}
@@ -62,10 +66,10 @@
         <div class="block-text center">
             <h1>Download Ratings Sheet</h1>
             <p class="indent">Below is where you can download the ratings sheets either:</p>
-                <ul class="left">
-                    <li>Creating a new ratings sheet with the most recent changes you have made</li>
-                    <li>Download a previously existing rating sheet</li>
-                </ul>
+            <ul class="left">
+                <li>Create a new ratings sheet with the most recent changes you have made</li>
+                <li>Download a previously existing rating sheet</li>
+            </ul>
             <div>
                 <a href="{% url 'download_ratings' %}">
                     <button type="button">Create and Download Current Ratings</button>
@@ -81,6 +85,12 @@
                 </select><br>
                 <button type="submit">Download Pre-existing Ratings Sheet</button>
             </form>
+            <div>
+                <p class="indent">Click the button below to export all data from the database on active, non-volunteers players</p>
+                <a href="{% url 'download_player_data' %}">
+                    <button type="button">Export Player Data</button>
+                </a>
+            </div>
         </div>
     </div>
 

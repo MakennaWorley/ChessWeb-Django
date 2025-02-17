@@ -45,6 +45,60 @@ class Player(models.Model):
     def improved_rating(self):
         return self.rating - self.beginning_rating
 
+    # functions for editing Player data
+    def add_player(self, first_name, last_name, rating, grade, lesson_class, active_member, is_volunteer,
+                   parent_or_guardian, email, phone, additional_info, modified_by):
+        if rating < 100:
+            rating = 100
+
+        new_player = Player.objects.create(
+            last_name=last_name,
+            first_name=first_name,
+            rating=rating,
+            beginning_rating=rating,
+            grade=grade,
+            lesson_class=lesson_class,
+            active_member=active_member,
+            is_volunteer=is_volunteer,
+            parent_or_guardian=parent_or_guardian,
+            email=email,
+            phone=phone,
+            additional_info=additional_info,
+            modified_by=modified_by,
+            is_active=True,
+        )
+
+        return new_player
+
+    def edit_player(self, first_name, last_name, rating, grade, lesson_class, active_member, is_volunteer,
+                    parent_or_guardian, email, phone, additional_info, modified_by):
+        # Mark the current player instance as inactive and set the end date
+        self.is_active = False
+        self.end_at = timezone.now()
+        self.save()
+
+        if rating < 100:
+            rating = 100
+
+        new_player = Player.objects.create(
+            last_name=last_name,
+            first_name=first_name,
+            rating=rating,
+            beginning_rating=rating,
+            grade=grade,
+            lesson_class=lesson_class,
+            active_member=active_member,
+            is_volunteer=is_volunteer,
+            parent_or_guardian=parent_or_guardian,
+            email=email,
+            phone=phone,
+            additional_info=additional_info,
+            modified_by=modified_by,
+            is_active=True,
+        )
+
+        return new_player
+
     def update_rating(self, new_rating, opponent, modified_by):
         # Mark the current player instance as inactive and set the end date
         self.is_active = False
@@ -78,6 +132,14 @@ class Player(models.Model):
 
         return new_player
 
+    def delete_player(self):
+        # Mark the current player instance as inactive and set the end date
+        self.is_active = False
+        self.end_at = timezone.now()
+        self.save()
+
+        return True
+
 
 class LessonClass(models.Model):
     name = models.CharField(max_length=100)
@@ -91,6 +153,41 @@ class LessonClass(models.Model):
 
     def __str__(self):
         return self.name
+
+    def add_class(self, name, teacher, co_teacher, modified_by):
+        new_class = LessonClass.objects.create(
+            name=name,
+            teacher=teacher,
+            co_teacher=co_teacher,
+            modified_by=modified_by,
+            is_active=True,
+        )
+
+        return new_class
+
+    def edit_class(self, name, teacher, co_teacher, modified_by):
+        # Mark the current class instance as inactive and set the end date
+        self.is_active = False
+        self.end_at = timezone.now()
+        self.save()
+
+        new_class = LessonClass.objects.create(
+            name=name,
+            teacher=teacher,
+            co_teacher=co_teacher,
+            modified_by=modified_by,
+            is_active=True,
+        )
+
+        return new_class
+
+    def delete_class(self):
+        # Mark the current class instance as inactive and set the end date
+        self.is_active = False
+        self.end_at = timezone.now()
+        self.save()
+
+        return True
 
 
 class RegisteredUser(models.Model):
@@ -145,7 +242,8 @@ class Game(models.Model):
     @classmethod
     def add_game(cls, date_of_match, board_letter, board_number, white, black, result, modified_by):
         # Check if there's an active game on the same board
-        if cls.objects.filter(date_of_match=date_of_match, board_letter=board_letter, board_number=board_number, is_active=True).exists():
+        if cls.objects.filter(date_of_match=date_of_match, board_letter=board_letter, board_number=board_number,
+                              is_active=True).exists():
             raise ValidationError(f"A game on board {board_letter}-{board_number} and {date_of_match} already exists.")
 
         # Create the new game
@@ -179,3 +277,11 @@ class Game(models.Model):
         )
 
         return new_game
+
+    def delete_game(self):
+        # Mark the current game instance as inactive and set the end date
+        self.is_active = False
+        self.end_at = timezone.now()
+        self.save()
+
+        return True

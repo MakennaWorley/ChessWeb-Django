@@ -5,12 +5,13 @@
     <div class="block-container-list">
         <div class="block-text center">
             <h1>Make Pairing Sheet</h1>
-            <p class="indent">To make a pairing sheet, first select the date that the games will be played. If you want certain players to
-                play this time you <strong>MUST</strong> manually add these games with <strong>BOTH</strong> players to a particular board
-                and <strong>THEN</strong> hit the "Pair!" button. Failing to do this will <strong>NOT</strong> create the game before the
-                pairing algorithm runs.</p>
-            <p class="indent">If you have already submitted the pairing sheet and realized you have made a mistake, you need to use the 'Input
-                Results' page's Update Game Results to fix this. Do <strong>NOT</strong> use the Make Pairing Sheet again!</p>
+            <p class="indent">To make a pairing sheet, first select the date that the games will be played. If you want
+                certain players to play this time you <strong>MUST</strong> manually add these games with
+                <strong>BOTH</strong> players to a particular board and <strong>THEN</strong> hit the "Pair!" button.
+                Failing to do this will <strong>NOT</strong> create the game before the pairing algorithm runs.</p>
+            <p class="indent">If you have already submitted the pairing sheet and realized you have made a mistake, you
+                need to use the "Input Results" tab's Update Game Results to fix this. Do <strong>NOT</strong> use the
+                Make Pairing Sheet again!</p>
             <p class="indent">After the success message, you can now download the pairings sheet!</p>
 
             <div id="date-picker">
@@ -38,7 +39,7 @@
                             <tbody id="newGamesTableBody">
                             </tbody>
                         </table>
-                        
+
                         <button type="submit">Pair!</button>
                     </form>
                 </div>
@@ -47,9 +48,10 @@
 
         <div class="block-text center">
             <h1 class="center">Download Pairing Sheet</h1>
-            <p class="indent">When downloading a pairings sheet, it will <strong>ALWAYS</strong> download what is in the database at
-                the moment you hit download. This does <strong>NOT</strong> save older versions of the pairing sheet for that date!</p>
-            
+            <p class="indent">When downloading a pairings sheet, it will <strong>ALWAYS</strong> download what is in the
+                database at the moment you hit download. This does <strong>NOT</strong> save older versions of the
+                pairing sheet for that date!</p>
+
             <form method="POST" action="{% url 'download_pairings' %}">
                 {% csrf_token %}
                 <label for="{{ form.date.id_for_label }}">Date of Match:</label>

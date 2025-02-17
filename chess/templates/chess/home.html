@@ -8,12 +8,13 @@
                 <form id="data-selection-form" class="center" style="height:3rem; padding:.5rem">
                     <label><input type="radio" name="data_type" value="players" checked>Ratings</label>
                     <label><input type="radio" name="data_type" value="games">Pairings</label>
-                
+
                     <div id="volunteer-toggle" style="display:block;">
-                        <label><input type="radio" name="volunteer-toggle" value="false" checked>Don't Show Volunteers</label>
+                        <label><input type="radio" name="volunteer-toggle" value="false" checked>Don't Show
+                            Volunteers</label>
                         <label><input type="radio" name="volunteer-toggle" value="true">Show Volunteers</label>
                     </div>
-                    
+
                     <div id="date-picker" style="display:none;">
                         <label for="game-date">Select Date:</label>
                         <select id="game-date" name="game-date">
@@ -25,22 +26,35 @@
                 </form>
             </div>
         </div>
-    
+
         <div id="help-text" class="center new-line">
-            Here are the ratings of the players as stored in the database. This is currently not displaying volunteers' ratings.
+            Here are the ratings of the players as stored in the database. This is currently <strong>NOT</strong>
+            displaying volunteers' ratings.
         </div>
         <div class="center new-line">
-            You can only edit player data and not game data since the game data is maintained by Input Results. Adding, Editing,
-            and Searching data coming in the next release!
-        </div>
-    
+            To add any new players, classes, or games please click the plus icon to the right. Please keep in mind you
+            must have the teacher in the database <strong>BEFORE</strong> you create the class and you must also have the
+            class created <strong>BEFORE</strong> adding a player to the class. If you add a game via the plus icon and
+            need to put in a result, you <strong>MUST</strong> use the "Input Results" section.</div>
+
+        <div class="center new-line">
+            To edit any player data, you can click the pencil icon located on the right of the player row. If you need
+            to update game data, please use the "Input Results" section since it already does that functionality. When
+            editing game data, please be cautious since this can affect player ratings! Undo functionality coming in
+            Release 1.2.</div>
+
+        <div class="center new-line">
+            To delete any data, please click the trashcan icon located on the right side of any row. Keep in mind
+            deleting a game does <strong>NOT</strong> reset the players ratings to before the game result was added. TUndo functionality coming in
+            Release 1.2.</div>
+
         <div id="ratings_sheet">
         </div>
-    
+
         <div id="pairings_sheet" style="display:none;">
         </div>
     </div>
-    
+
     <script>
         const getPairingsSheetUrl = "{% url 'get_games' %}";
         const getRatingsSheetUrl = "{% url 'get_ratings_sheet' %}";
