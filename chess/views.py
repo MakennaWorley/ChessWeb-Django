@@ -9,14 +9,17 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q, Count
+from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect, HttpResponse, Http404, JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 from datetime import datetime
 
-from .forms import SignUpForm, PairingDateForm, GameSaveForm
-from .models import RegisteredUser, Player, Game
+from .forms import SignUpForm, PairingDateForm, GameSaveForm, PlayerForm, GameForm, LessonClassForm
+from .models import RegisteredUser, Player, Game, LessonClass
 from .write_to_file import write_ratings, write_pairings, export_player_data
 
 
@@ -102,6 +105,45 @@ def get_players(request):
     return JsonResponse({'players': players_data})
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_player(request):
+    try:
+        data = json.loads(request.body)
+        with transaction.atomic():
+            player = Player.objects.create(**data)
+        return JsonResponse({"status": "success", "player_id": player.id})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_player(request, player_id):
+    try:
+        data = json.loads(request.body)
+        player = get_object_or_404(Player, pk=player_id)
+        for key, value in data.items():
+            setattr(player, key, value)
+        with transaction.atomic():
+            player.save()
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_player(request, player_id):
+    try:
+        player = get_object_or_404(Player, pk=player_id)
+        with transaction.atomic():
+            player.delete()
+        return JsonResponse({"status": "deleted"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
 def get_games(request):
     if request.method == 'POST':
         try:
@@ -138,6 +180,84 @@ def get_games(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_game(request):
+    try:
+        data = json.loads(request.body)
+        with transaction.atomic():
+            game = Game.objects.create(**data)
+        return JsonResponse({"status": "success", "game_id": game.id})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_game(request, game_id):
+    try:
+        data = json.loads(request.body)
+        game = get_object_or_404(Game, pk=game_id)
+        for key, value in data.items():
+            setattr(game, key, value)
+        with transaction.atomic():
+            game.save()
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_game(request, game_id):
+    try:
+        game = get_object_or_404(Game, pk=game_id)
+        with transaction.atomic():
+            game.delete()
+        return JsonResponse({"status": "deleted"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_class(request):
+    try:
+        data = json.loads(request.body)
+        with transaction.atomic():
+            lesson_class = LessonClass.objects.create(**data)
+        return JsonResponse({"status": "success", "class_id": lesson_class.id})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_class(request, class_id):
+    try:
+        data = json.loads(request.body)
+        lesson_class = get_object_or_404(LessonClass, pk=class_id)
+        for key, value in data.items():
+            setattr(lesson_class, key, value)
+        with transaction.atomic():
+            lesson_class.save()
+        return JsonResponse({"status": "success"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_class(request, class_id):
+    try:
+        lesson_class = get_object_or_404(LessonClass, pk=class_id)
+        with transaction.atomic():
+            lesson_class.delete()
+        return JsonResponse({"status": "deleted"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
 def get_ratings_sheet(request):
@@ -660,3 +780,103 @@ def download_pairings(request):
         form = PairingDateForm()
 
     return render(request, 'chess/pair.html', {'form': form})
+
+# View and Functions relating to the manual edit page
+def manual_view(request):
+    players = {p.id: str(p) for p in Player.objects.all()}
+    games = {g.id: str(g) for g in Game.objects.all()}
+    classes = {c.id: str(c) for c in LessonClass.objects.all()}
+
+    message = ""
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        model = request.POST.get("model")
+        target_id = request.POST.get("target_id")
+
+        data = request.POST.dict()
+        data.pop("csrfmiddlewaretoken", None)
+        data.pop("action", None)
+        data.pop("model", None)
+        data.pop("target_id", None)
+
+        print(action, model, target_id, data)
+
+        try:
+            if model == "player":
+                if action == "add":
+                    Player.add_player(data)
+                    message = "Player added successfully."
+                elif action == "update":
+                    Player.edit_player(target_id, data)
+                    message = "Player updated successfully."
+                elif action == "delete":
+                    Player.delete_player(target_id)
+                    message = "Player deleted."
+
+            elif model == "game":
+                if action == "add":
+                    Game.add_game(data)
+                    message = "Game added successfully."
+                elif action == "update":
+                    Game.update_game(target_id, data)
+                    message = "Game updated successfully."
+                elif action == "delete":
+                    Game.delete_game(target_id)
+                    message = "Game deleted."
+
+            elif model == "class":
+                if action == "add":
+                    LessonClass.add_class(data)
+                    message = "Class added successfully."
+                elif action == "update":
+                    LessonClass.edit_class(target_id, data)
+                    message = "Class updated successfully."
+                elif action == "delete":
+                    LessonClass.delete_class(target_id)
+                    message = "Class deleted."
+
+        except Exception as e:
+            message = f"Error: {str(e)}"
+
+    def form_fields_to_json(form_class):
+        form = form_class()
+        return {
+            name: str(form[name])
+            for name in form.fields
+        }
+
+    context = {
+        "players": players,
+        "games": games,
+        "classes": classes,
+        "player_form_json": form_fields_to_json(PlayerForm),
+        "game_form_json": form_fields_to_json(GameForm),
+        "class_form_json": form_fields_to_json(LessonClassForm),
+        "message": message,
+    }
+
+    return render(request, "chess/manual.html", context)
+
+
+@require_http_methods(["GET"])
+def get_object_data(request):
+    model = request.GET.get("model")
+    obj_id = request.GET.get("id")
+
+    model_map = {
+        'player': Player,
+        'game': Game,
+        'class': LessonClass
+    }
+
+    if model not in model_map:
+        return JsonResponse({"error": "Invalid model"}, status=400)
+
+    Model = model_map[model]
+    try:
+        obj = Model.objects.get(pk=obj_id)
+        data = model_to_dict(obj)
+        return JsonResponse(data)
+    except Model.DoesNotExist:
+        return JsonResponse({"error": "Object not found"}, status=404)
