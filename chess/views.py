@@ -1,5 +1,6 @@
 import os
 import json
+import re
 
 from django.conf import settings
 from django.contrib import messages
@@ -11,6 +12,8 @@ from django.db.models import Q, Count
 from django.http import HttpResponseRedirect, HttpResponse, Http404, JsonResponse
 from django.shortcuts import render, redirect
 from django.utils import timezone
+
+from datetime import datetime
 
 from .forms import SignUpForm, PairingDateForm, GameSaveForm
 from .models import RegisteredUser, Player, Game
@@ -32,6 +35,57 @@ BOARDS = [
 RATINGS_HELPER = lambda rating, result, expected: round(rating + 32 * (result - expected))
 CALC_EXPECTED = lambda player_rating, opponent_rating: 1 / (1 + 10 ** ((opponent_rating - player_rating) / 400))
 
+VALID_RESULTS = {"White", "Black", "Draw", "NONE", "U"}
+VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9 .'-]+$")
+
+
+# Database Protection
+def is_valid_name(name: str):
+    return bool(VALID_NAME_RE.fullmatch(name)) and 0 < len(name) <= 100
+
+def validate_game_date(date_str: str):
+    """Ensure the date is in YYYY-MM-DD format and return a date object."""
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValidationError("Invalid date format. Expected YYYY-MM-DD.")
+
+def parse_player_name(name: str):
+    """
+    Ensure the player name is in the expected 'LastName, FirstName' format.
+    Returns a tuple (first_name, last_name) or raises a ValidationError.
+    """
+    if not name or name == "N/A":
+        return None
+    parts = name.split(", ")
+    if len(parts) != 2:
+        raise ValidationError("Invalid player name format. Expected 'LastName, FirstName'.")
+    last_name, first_name = parts[0], parts[1]
+    if not (is_valid_name(last_name) and is_valid_name(first_name)):
+        raise ValidationError("Invalid characters in player name.")
+    return first_name, last_name
+
+def validate_board(board: str):
+    """Ensure the board identifier is one of the allowed boards."""
+    if board not in BOARDS:
+        raise ValidationError("Invalid board identifier.")
+    return board
+
+def validate_result(result: str):
+    """Ensure the result is one of the allowed values."""
+    if result not in VALID_RESULTS:
+        raise ValidationError("Invalid game result.")
+    return result
+
+def validate_filename(file_name: str):
+    """
+    Allow only letters, numbers, underscores, hyphens, and periods in file names.
+    Prevents directory traversal attacks.
+    """
+    if not re.match(r'^[a-zA-Z0-9_.-]+$', file_name):
+        raise ValidationError("Invalid file name.")
+    return file_name
+
 
 # Functions associated with the API calls to database
 def get_players(request):
@@ -52,22 +106,21 @@ def get_games(request):
     if request.method == 'POST':
         try:
             body = json.loads(request.body)
-            game_date = body.get('game_date')
-
-            if not game_date:
+            game_date_str = body.get('game_date')
+            if not game_date_str:
                 return JsonResponse({'status': 'error', 'message': 'No game date provided'}, status=400)
 
-            games = Game.objects.filter(date_of_match=game_date, is_active=True).all()
+            # Validate and parse game_date
+            game_date = validate_game_date(game_date_str)
 
+            games = Game.objects.filter(date_of_match=game_date, is_active=True).all()
             if not games.exists():
-                return JsonResponse({'status': 'error', 'message': f'No games found for date {game_date}'}, status=404)
+                return JsonResponse({'status': 'error', 'message': f'No games found for date {game_date_str}'}, status=404)
 
             games_data = []
             board_index = {board: index for index, board in enumerate(BOARDS)}
-
             for game in games:
                 result = '' if game.result in ['NONE', 'U'] else game.result
-
                 games_data.append({
                     "id": game.id,
                     'board': game.get_board(),
@@ -75,14 +128,13 @@ def get_games(request):
                     'result': result,
                     'black_player': game.black.name() if game.black else 'N/A',
                 })
-
             games_data.sort(key=lambda game: board_index.get(game['board'], float('inf')))
-
             return JsonResponse({'games': games_data}, status=200)
-
 
         except json.JSONDecodeError:
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+        except ValidationError as ve:
+            return JsonResponse({'status': 'error', 'message': str(ve)}, status=400)
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
@@ -232,63 +284,64 @@ def save_games(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body.decode('utf-8'))
-            game_date = data.get('game_date')
+            game_date_str = data.get('game_date')
             games = data.get('games')
-
             if not games:
                 return JsonResponse({'status': 'error', 'message': 'No games data received'}, status=400)
 
-            games_keyed = {
-                game['board']: {key: value for key, value in game.items() if key != 'board'} for game in games
-                if not (game['white'] == "N/A" and game['black'] == "N/A")
-            }
+            # Validate game_date
+            game_date = validate_game_date(game_date_str)
+
+            games_keyed = {}
+            for game in games:
+                board = game.get('board')
+                # Validate board identifier
+                validate_board(board)
+
+                # Skip games where both white and black are "N/A"
+                if game.get('white') == "N/A" and game.get('black') == "N/A":
+                    continue
+
+                # Validate result field
+                result = game.get('result', 'NONE')
+                validate_result(result)
+
+                games_keyed[board] = {key: value for key, value in game.items() if key != 'board'}
 
             games_db = Game.objects.filter(date_of_match=game_date)
-            games_db_keyed = {
-                game.get_board(): game for game in games_db
-            }
+            games_db_keyed = {game.get_board(): game for game in games_db}
 
-            # Games not in the db
-            new_games_to_db = {
-                board: details for board, details in games_keyed.items() if board not in games_db_keyed
-            }
-
-            # Games not in data
-            games_not_in_data = {
-                board: game for board, game in games_db_keyed.items() if board not in games_keyed
-            }
-
+            # Identify new, removed, and updated games
+            new_games_to_db = {board: details for board, details in games_keyed.items() if board not in games_db_keyed}
+            games_not_in_data = {board: game for board, game in games_db_keyed.items() if board not in games_keyed}
             updated_games = {}
-
             for board, details in games_keyed.items():
                 if board in games_db_keyed:
                     db_game = games_db_keyed[board]
-
                     white_db = db_game.white.name() if db_game.white is not None else "N/A"
                     black_db = db_game.black.name() if db_game.black is not None else "N/A"
                     result_db = db_game.result or "NONE"
-
                     if white_db != details['white'] or black_db != details['black'] or result_db != details['result']:
                         updated_games[board] = details
 
             added_games_report = []
             deactivated_games_report = []
             updated_games_report = []
-
             games_with_results = {}
-
             user = request.user
 
             with transaction.atomic():
                 # Add new games
                 for board, details in new_games_to_db.items():
                     try:
-                        white_player = Player.objects.get(first_name=details['white'].split(', ')[1],
-                                                          last_name=details['white'].split(', ')[0]) if details[
-                                                                                                            'white'] != "N/A" else None
-                        black_player = Player.objects.get(first_name=details['black'].split(', ')[1],
-                                                          last_name=details['black'].split(', ')[0]) if details[
-                                                                                                            'black'] != "N/A" else None
+                        white_player = None
+                        if details.get('white') != "N/A":
+                            first_name, last_name = parse_player_name(details['white'])
+                            white_player = Player.objects.get(first_name=first_name, last_name=last_name)
+                        black_player = None
+                        if details.get('black') != "N/A":
+                            first_name, last_name = parse_player_name(details['black'])
+                            black_player = Player.objects.get(first_name=first_name, last_name=last_name)
                         if details['result'] != "NONE":
                             games_with_results[board] = [white_player, black_player, details['result']]
                         Game.add_game(
@@ -304,7 +357,7 @@ def save_games(request):
                     except ValidationError as e:
                         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
-                # Deactivate games
+                # Deactivate games not in data
                 for board, game in games_not_in_data.items():
                     game.is_active = False
                     game.end_at = timezone.now()
@@ -314,17 +367,18 @@ def save_games(request):
                 # Update existing games
                 for board, details in updated_games.items():
                     db_game = games_db_keyed[board]
-                    white_player = Player.objects.filter(first_name=details['white'].split(', ')[1],
-                                                         last_name=details['white'].split(', ')[0],
-                                                         is_active=True).first() if details[
-                                                                                        'white'] != "N/A" else None
-                    black_player = Player.objects.filter(first_name=details['black'].split(', ')[1],
-                                                         last_name=details['black'].split(', ')[0],
-                                                         is_active=True).first() if details[
-                                                                                        'black'] != "N/A" else None
+                    white_player = None
+                    if details.get('white') != "N/A":
+                        first_name, last_name = parse_player_name(details['white'])
+                        white_player = Player.objects.filter(first_name=first_name, last_name=last_name,
+                                                             is_active=True).first()
+                    black_player = None
+                    if details.get('black') != "N/A":
+                        first_name, last_name = parse_player_name(details['black'])
+                        black_player = Player.objects.filter(first_name=first_name, last_name=last_name,
+                                                             is_active=True).first()
                     if details['result'] != "NONE":
                         games_with_results[board] = [white_player, black_player, details['result']]
-
                     db_game.update_game(
                         date_of_match=game_date,
                         board_letter=board[0],
@@ -336,7 +390,6 @@ def save_games(request):
                     )
                     updated_games_report.append(f"Updated game for board {board}")
 
-            # Final response
             response_data = {
                 'status': 'success',
                 'message': 'Games processed successfully',
@@ -346,14 +399,11 @@ def save_games(request):
             }
 
             players = []
-
             with transaction.atomic():
-                for game, details in games_with_results.items():
-
-                    if details[0] in Player.objects.filter(is_active=True, is_volunteer=True).all(): # Volunteer on White
+                for board, details in games_with_results.items():
+                    if details[0] in Player.objects.filter(is_active=True, is_volunteer=True).all():
                         Player.update_rating(details[1], details[1].rating, details[0], user)
-
-                    elif details[1] in Player.objects.filter(is_active=True, is_volunteer=True).all(): # Volunteer on Black
+                    elif details[1] in Player.objects.filter(is_active=True, is_volunteer=True).all():
                         Player.update_rating(details[0], details[0].rating, details[1], user)
                     else:
                         if details[2] == 'White':
@@ -371,34 +421,41 @@ def save_games(request):
                                                       CALC_EXPECTED(details[0].rating, details[1].rating))
                             b_rating = RATINGS_HELPER(details[1].rating, 1,
                                                       CALC_EXPECTED(details[1].rating, details[0].rating))
-                        # Add player's new rating
                         Player.update_rating(details[0], w_rating, details[1], user)
                         Player.update_rating(details[1], b_rating, details[0], user)
-
                     players.append(f"{details[0].last_name}, {details[0].first_name}")
                     players.append(f"{details[1].last_name}, {details[1].first_name}")
 
             response_data['ratings'] = players
-
             return JsonResponse(response_data, status=200)
+
         except json.JSONDecodeError:
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
+        except ValidationError as ve:
+            return JsonResponse({'status': 'error', 'message': str(ve)}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
 
 def download_existing_ratings_sheet(request):
     file_name = request.GET.get('file')
-    if file_name:
-        file_path = os.path.join(CREATED_RATING_FILES_DIR, file_name)
-        if os.path.exists(file_path):
-            with open(file_path, 'rb') as f:
-                response = HttpResponse(f.read(), content_type='application/octet-stream')
-                response['Content-Disposition'] = f'attachment; filename="{file_name}"'
-                return response
-        else:
-            raise Http404("File does not exist")
-    return redirect('input_results')
+    try:
+        if file_name:
+            # Validate file name to prevent directory traversal
+            safe_file_name = validate_filename(file_name)
+            file_path = os.path.join(CREATED_RATING_FILES_DIR, safe_file_name)
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as f:
+                    response = HttpResponse(f.read(), content_type='application/octet-stream')
+                    response['Content-Disposition'] = f'attachment; filename="{safe_file_name}"'
+                    return response
+            else:
+                raise Http404("File does not exist")
+        return redirect('input_results')
+    except ValidationError as ve:
+        return HttpResponse(str(ve), status=400)
 
 
 def download_ratings(request):
@@ -435,35 +492,41 @@ def pair_view(request):
 def new_pairings(request):
     if request.method == 'POST':
         try:
-            unicode = request.body.decode('utf-8')
-            data = json.loads(unicode)
-
-            game_date = data.get('game_date')
+            data = json.loads(request.body.decode('utf-8'))
+            game_date_str = data.get('game_date')
             games = data.get('games')
+
+            # Validate game date
+            game_date = validate_game_date(game_date_str)
 
             used_boards = []
             pairings = []
             paired_players = set()
-
             user = request.user
 
-            # Manually created games
+            # Process manually created games
             with transaction.atomic():
                 for game in games:
                     board = game.get('board')
+                    # Validate board identifier
+                    validate_board(board)
+
                     white_player_name = game.get('whitePlayer')
                     black_player_name = game.get('blackPlayer')
-
-                    white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
-                                                         last_name=white_player_name.split(', ')[0],
-                                                         is_active=True).first()
-                    black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
-                                                         last_name=black_player_name.split(', ')[0],
-                                                         is_active=True).first()
+                    white_player = None
+                    if white_player_name and white_player_name != "N/A":
+                        first_name, last_name = parse_player_name(white_player_name)
+                        white_player = Player.objects.filter(first_name=first_name, last_name=last_name, is_active=True).first()
+                    black_player = None
+                    if black_player_name and black_player_name != "N/A":
+                        first_name, last_name = parse_player_name(black_player_name)
+                        black_player = Player.objects.filter(first_name=first_name, last_name=last_name, is_active=True).first()
 
                     used_boards.append(board)
-                    paired_players.add(white_player)
-                    paired_players.add(black_player)
+                    if white_player:
+                        paired_players.add(white_player)
+                    if black_player:
+                        paired_players.add(black_player)
 
                     Game.add_game(
                         date_of_match=game_date,
@@ -478,30 +541,23 @@ def new_pairings(request):
             message = "All manual pairings were successfully created."
             unused_boards = [board for board in BOARDS if board not in used_boards]
             unpaired_players = list(Player.objects.filter(is_active=True, is_volunteer=False).exclude(
-                id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name',
-                                                                          'first_name'))
+                id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name', 'first_name'))
 
-            # Computer's paired games
+            # Generate computer pairings
             pairings = pair(unpaired_players, pairings)
-
             with transaction.atomic():
                 for i, pairing in enumerate(pairings):
                     board = unused_boards[i]
                     white_player_name, black_player_name = pairing.split(':')
 
-                    if white_player_name:
-                        white_player = Player.objects.filter(first_name=white_player_name.split(', ')[1],
-                                                         last_name=white_player_name.split(', ')[0],
-                                                         is_active=True).first()
-                    else:
-                        white_player = None
-
-                    if black_player_name:
-                        black_player = Player.objects.filter(first_name=black_player_name.split(', ')[1],
-                                                             last_name=black_player_name.split(', ')[0],
-                                                             is_active=True).first()
-                    else:
-                        black_player = None
+                    white_player = None
+                    if white_player_name and white_player_name != "N/A":
+                        first_name, last_name = parse_player_name(white_player_name)
+                        white_player = Player.objects.filter(first_name=first_name, last_name=last_name, is_active=True).first()
+                    black_player = None
+                    if black_player_name and black_player_name != "N/A":
+                        first_name, last_name = parse_player_name(black_player_name)
+                        black_player = Player.objects.filter(first_name=first_name, last_name=last_name, is_active=True).first()
 
                     Game.add_game(
                         date_of_match=game_date,
@@ -514,8 +570,13 @@ def new_pairings(request):
                     )
 
             return JsonResponse({'status': 'success', 'message': message}, status=200)
+
         except json.JSONDecodeError:
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
+        except ValidationError as ve:
+            return JsonResponse({'status': 'error', 'message': str(ve)}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
