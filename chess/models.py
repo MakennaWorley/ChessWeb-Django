@@ -46,12 +46,30 @@ class Player(models.Model):
         return self.rating - self.beginning_rating
 
     # functions for editing Player data
-    def add_player(self, first_name, last_name, rating, grade, lesson_class, active_member, is_volunteer,
+    @classmethod
+    def add_player(cls, first_name, last_name, rating, grade, lesson_class, active_member, is_volunteer,
                    parent_or_guardian, email, phone, additional_info, modified_by):
+        if not grade:
+            grade = None
+        if not lesson_class:
+            lesson_class = None
+        if not active_member:
+            active_member = True
+        if not is_volunteer:
+            is_volunteer = False
+        if not parent_or_guardian:
+            parent_or_guardian = None
+        if not email:
+            email = None
+        if not phone:
+            phone = None
+        if not additional_info:
+            additional_info = None
+
         if rating < 100:
             rating = 100
 
-        new_player = Player.objects.create(
+        new_player = cls.objects.create(
             last_name=last_name,
             first_name=first_name,
             rating=rating,
@@ -70,7 +88,7 @@ class Player(models.Model):
 
         return new_player
 
-    def edit_player(self, first_name, last_name, rating, grade, lesson_class, active_member, is_volunteer,
+    def edit_player(self, first_name, last_name, rating, beginning_rating, grade, lesson_class, active_member, is_volunteer,
                     parent_or_guardian, email, phone, additional_info, modified_by):
         # Mark the current player instance as inactive and set the end date
         self.is_active = False
@@ -79,12 +97,14 @@ class Player(models.Model):
 
         if rating < 100:
             rating = 100
+        if beginning_rating < 100:
+            beginning_rating = 100
 
         new_player = Player.objects.create(
             last_name=last_name,
             first_name=first_name,
             rating=rating,
-            beginning_rating=rating,
+            beginning_rating=beginning_rating,
             grade=grade,
             lesson_class=lesson_class,
             active_member=active_member,
@@ -154,8 +174,9 @@ class LessonClass(models.Model):
     def __str__(self):
         return self.name
 
-    def add_class(self, name, teacher, co_teacher, modified_by):
-        new_class = LessonClass.objects.create(
+    @classmethod
+    def add_class(cls, name, teacher, co_teacher, modified_by):
+        new_class = cls.objects.create(
             name=name,
             teacher=teacher,
             co_teacher=co_teacher,
@@ -257,6 +278,7 @@ class Game(models.Model):
             modified_by=modified_by,
             is_active=True
         )
+
         return new_game
 
     def update_game(self, date_of_match, board_letter, board_number, white, black, result, modified_by):

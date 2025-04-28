@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 
-from .models import RegisteredUser, Player, Game
+from .models import RegisteredUser, Player, Game, LessonClass
 
 
 class LoginForm(AuthenticationForm):
@@ -92,3 +92,51 @@ class SearchForm(forms.Form):
         max_length=100,
         required=True,
     )
+
+
+class PlayerForm(forms.ModelForm):
+    class Meta:
+        model = Player
+        fields = [
+            "last_name", "first_name", "rating", "grade", "lesson_class",
+            "active_member", "is_volunteer", "parent_or_guardian", "email",
+            "phone", "additional_info"
+        ]
+
+
+class GameForm(forms.ModelForm):
+    class Meta:
+        model = Game
+        fields = [
+            "date_of_match", "board_letter", "board_number", "white",
+            "black", "result"
+        ]
+
+
+class LessonClassForm(forms.ModelForm):
+    class Meta:
+        model = LessonClass
+        fields = ["name", "teacher", "co_teacher"]
+
+
+class AdminActionForm(forms.Form):
+    ACTION_CHOICES = [
+        ('add', 'Add'),
+        ('update', 'Update'),
+        ('delete', 'Delete'),
+    ]
+
+    MODEL_CHOICES = [
+        ('player', 'Player'),
+        ('game', 'Game'),
+        ('class', 'LessonClass'),
+    ]
+
+    action = forms.ChoiceField(choices=ACTION_CHOICES, widget=forms.RadioSelect)
+    model = forms.ChoiceField(choices=MODEL_CHOICES, widget=forms.RadioSelect)
+    target_id = forms.IntegerField(required=False, help_text="ID (required for update/delete)")
+
+    # Dynamic model forms
+    player_data = forms.ModelChoiceField(queryset=Player.objects.all(), required=False)
+    game_data = forms.ModelChoiceField(queryset=Game.objects.all(), required=False)
+    class_data = forms.ModelChoiceField(queryset=LessonClass.objects.all(), required=False)

@@ -1,0 +1,51 @@
+{% extends 'chess/base.html' %}
+{% load static %}
+
+    {% block content %}
+    <h2>Manual Admin Panel</h2>
+
+    {% if message %}
+        <div style="color: green; font-weight: bold;">{{ message }}</div>
+    {% endif %}
+
+    <form method="post" id="admin-form">
+        {% csrf_token %}
+
+        <p>
+            <strong>Action:</strong><br>
+            <label><input type="radio" name="action" value="add"> Add</label>
+            <label><input type="radio" name="action" value="update"> Update</label>
+            <label><input type="radio" name="action" value="delete"> Delete</label>
+        </p>
+
+        <p>
+            <strong>Model:</strong><br>
+            <label><input type="radio" name="model" value="player"> Player</label>
+            <label><input type="radio" name="model" value="game"> Game</label>
+            <label><input type="radio" name="model" value="class"> Class</label>
+        </p>
+
+        <div id="object-select" style="display:none;">
+            <label for="target-id">Select Existing:</label>
+            <select name="target_id" id="target-id"></select>
+        </div>
+
+        <div id="dynamic-fields"></div>
+
+        <button type="submit">Submit</button>
+    </form>
+    <script>
+        const modelMap = {
+            'player': {{ players|safe }},
+            'game': {{ games|safe }},
+            'class': {{ classes|safe }}
+        };
+
+        const fieldTemplates = {
+            player: {{ player_form_json|safe }},
+            game: {{ game_form_json|safe }},
+            class: {{ class_form_json|safe }}
+        };
+    </script>
+    <script src="{% static 'manual.js' %}"></script>
+{% endblock %}
