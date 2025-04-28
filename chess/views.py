@@ -281,6 +281,7 @@ def get_games(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 
+# This code should not be used given that the input results works without these functions
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_game(request):
@@ -325,9 +326,41 @@ def delete_game(request, game_id):
 def add_class(request):
     try:
         data = json.loads(request.body)
-        with transaction.atomic():
-            lesson_class = LessonClass.objects.create(**data)
-        return JsonResponse({"status": "success", "class_id": lesson_class.id})
+
+        name = data.get('name', '').strip()
+        teacher_id = data.get('teacher') or None
+        co_teacher_id = data.get('co_teacher') or None
+
+        if not (is_valid_not_null_string(name)):
+            print("Validation Error: Missing name")
+            raise ValidationError("Class name is required.")
+
+        # --- Fetch Related Objects ---
+        teacher = None
+        if teacher_id:
+            try:
+                teacher = Player.objects.get(id=teacher_id)
+            except Player.DoesNotExist:
+                print(f"Validation Error: Player id '{teacher_id}' does not exist")
+                raise ValidationError(f"Player with id '{teacher_id}' does not exist.")
+
+        co_teacher = None
+        if co_teacher_id:
+            try:
+                co_teacher = Player.objects.get(id=co_teacher_id)
+            except Player.DoesNotExist:
+                print(f"Validation Error: Player id '{co_teacher_id}' does not exist")
+                raise ValidationError(f"Player with id '{co_teacher_id}' does not exist.")
+
+        if not request.user or not request.user.is_authenticated:
+            print("Validation Error: User not logged in")
+            raise ValidationError("User must be logged in to add a player.")
+
+        modified_by = request.user
+
+        new_class = LessonClass.add_class(name, teacher, co_teacher, modified_by)
+
+        return JsonResponse({"status": "success", "class_id": new_class.id})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
