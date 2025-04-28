@@ -44,6 +44,9 @@ RATINGS_HELPER = lambda rating, result, expected: round(rating + 32 * (result - 
 CALC_EXPECTED = lambda player_rating, opponent_rating: 1 / (1 + 10 ** ((opponent_rating - player_rating) / 400))
 
 VALID_RESULTS = {"White", "Black", "Draw", "NONE", "U"}
+VALID_BOARD_LETTERS = {"G", "H", "I", "J"}
+VALID_BOARD_NUMBERS = {"G": 5, "H": 6, "I": 22, "J": 22}
+
 VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9 .'-]+$")
 SAFE_TEXT_RE = re.compile(r"^[a-zA-Z0-9 .,'@+\-_/():!?]*$")
 
@@ -281,17 +284,85 @@ def get_games(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 
-# This code should not be used given that the input results works without these functions
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_game(request):
     try:
         data = json.loads(request.body)
-        with transaction.atomic():
-            game = Game.objects.create(**data)
-        return JsonResponse({"status": "success", "game_id": game.id})
+        print("Raw data:", data)
+
+        date_str = data.get('date_of_match', '').strip()
+        board_letter = data.get('board_letter', '').strip()
+        board_number = data.get('board_number', '').strip()
+        white_player_id = data.get('white') or None
+        black_player_id = data.get('black') or None
+        result = data.get('result', '').strip()
+
+        if board_letter not in VALID_BOARD_LETTERS:
+            print("Invalid board letter:", board_letter)
+            raise ValidationError(f"Invalid board letter: {board_letter}")
+
+        if result not in VALID_RESULTS:
+            print("Invalid result:", result)
+            raise ValidationError(f"Invalid game result: {result}")
+
+        try:
+            board_number_int = int(board_number)
+        except ValueError:
+            raise ValidationError(f"Board number must be an integer, got: {board_number}")
+
+        max_board_number = VALID_BOARD_NUMBERS[board_letter]
+        if not (1 <= board_number_int <= max_board_number):
+            print("Invalid board number:", board_number)
+            raise ValidationError(
+                f"Invalid board number {board_number_int} for board {board_letter}. Must be between 1 and {max_board_number}.")
+
+        # --- convert date string into datefield ---
+
+        if not date_str:
+            raise ValidationError("Date is required.")
+
+        try:
+            date_of_match = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValidationError("Date must be in the format YYYY-MM-DD.")
+
+        # --- Fetch Related Objects ---
+        white_player = None
+        if white_player_id:
+            try:
+                white_player = Player.objects.get(id=white_player_id)
+            except Player.DoesNotExist:
+                print(f"Validation Error: Player id '{white_player_id}' does not exist")
+                raise ValidationError(f"Player with id '{white_player_id}' does not exist.")
+
+        black_player = None
+        if black_player_id:
+            try:
+                black_player = Player.objects.get(id=black_player_id)
+            except Player.DoesNotExist:
+                print(f"Validation Error: Player id '{black_player_id}' does not exist")
+                raise ValidationError(f"Player with id '{black_player_id}' does not exist.")\
+
+        print(white_player_id, white_player, black_player_id, black_player)
+
+        if not request.user or not request.user.is_authenticated:
+            print("Validation Error: User not logged in")
+            raise ValidationError("User must be logged in to add a player.")
+
+        modified_by = request.user
+
+        new_game = Game.add_game(date_of_match, board_letter, board_number_int, white_player, black_player, result, modified_by)
+
+        return JsonResponse({"status": "success", "game_id": new_game.id})
+
+    except ValidationError as ve:
+        print("ValidationError:", ve)
+        return JsonResponse({"status": "error", "message": str(ve)}, status=400)
+
     except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        print("Unexpected Exception:", e)
+        return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
 @csrf_exempt
@@ -361,8 +432,14 @@ def add_class(request):
         new_class = LessonClass.add_class(name, teacher, co_teacher, modified_by)
 
         return JsonResponse({"status": "success", "class_id": new_class.id})
+
+    except ValidationError as ve:
+        print("ValidationError:", ve)
+        return JsonResponse({"status": "error", "message": str(ve)}, status=400)
+
     except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        print("Unexpected Exception:", e)
+        return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
 @csrf_exempt
