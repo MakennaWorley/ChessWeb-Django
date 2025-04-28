@@ -1,10 +1,12 @@
 import os
 import json
 import re
+import requests
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, authenticate
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -12,8 +14,10 @@ from django.db.models import Q, Count
 from django.forms.models import model_to_dict
 from django.http import HttpResponseRedirect, HttpResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 
 from datetime import datetime
@@ -26,6 +30,7 @@ from .write_to_file import write_ratings, write_pairings, export_player_data
 # Global Variables
 CREATED_RATING_FILES_DIR = os.path.join(os.path.dirname(__file__), '../files', 'ratings')
 CREATED_PAIRING_FILES_DIR = os.path.join(os.path.dirname(__file__), '../files', 'pairings')
+API_BASE_URL = 'http://localhost:8000/api'
 
 BOARD_SORT_ORDER = ['G', 'H', 'I', 'J']
 BOARDS = [
@@ -40,11 +45,21 @@ CALC_EXPECTED = lambda player_rating, opponent_rating: 1 / (1 + 10 ** ((opponent
 
 VALID_RESULTS = {"White", "Black", "Draw", "NONE", "U"}
 VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9 .'-]+$")
+SAFE_TEXT_RE = re.compile(r"^[a-zA-Z0-9 .,'@+\-_/():!?]*$")
 
 
 # Database Protection
-def is_valid_name(name: str):
-    return bool(VALID_NAME_RE.fullmatch(name)) and 0 < len(name) <= 100
+def is_valid_not_null_string(name: str):
+    if not name:
+        return False
+    name = name.strip()
+    return bool(VALID_NAME_RE.fullmatch(name)) and (0 < len(name) <= 100)
+
+def is_valid_string(name: str):
+    if name is None:
+        return True
+    value = name.strip()
+    return bool(SAFE_TEXT_RE.fullmatch(value)) and (0 <= len(value) <= 500)
 
 def validate_game_date(date_str: str):
     """Ensure the date is in YYYY-MM-DD format and return a date object."""
@@ -64,7 +79,7 @@ def parse_player_name(name: str):
     if len(parts) != 2:
         raise ValidationError("Invalid player name format. Expected 'LastName, FirstName'.")
     last_name, first_name = parts[0], parts[1]
-    if not (is_valid_name(last_name) and is_valid_name(first_name)):
+    if not (is_valid_not_null_string(last_name) and is_valid_not_null_string(first_name)):
         raise ValidationError("Invalid characters in player name.")
     return first_name, last_name
 
@@ -110,11 +125,95 @@ def get_players(request):
 def add_player(request):
     try:
         data = json.loads(request.body)
-        with transaction.atomic():
-            player = Player.objects.create(**data)
+        print("data:", data)
+
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        rating = int(data.get('rating', 100))
+
+        grade_raw = data.get('grade')
+        grade = int(grade_raw) if grade_raw not in (None, '', 'null') else None
+
+        lesson_class_id = data.get('lesson_class') or None
+        active_member = data.get('active_member') == 'on'
+        is_volunteer = data.get('is_volunteer') == 'on'
+        parent_or_guardian = data.get('parent_or_guardian', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        additional_info = data.get('additional_info', '').strip()
+
+        # Basic validations
+        if not (is_valid_not_null_string(first_name) or is_valid_not_null_string(last_name)):
+            print("Validation Error: Missing first or last name")
+            raise ValidationError("First name or last name is required.")
+
+        if not isinstance(rating, int):
+            print("Validation Error: Rating not integer")
+            raise ValidationError("Rating must be an integer.")
+
+        if grade is not None and not isinstance(grade, int):
+            print(f"Validation Error: Grade must be integer (received: {grade_raw})")
+            raise ValidationError("Grade must be an integer if provided.")
+
+        if not isinstance(active_member, bool) or not isinstance(is_volunteer, bool):
+            print("Validation Error: active_member or is_volunteer not boolean")
+            raise ValidationError("Active member and volunteer flags must be booleans.")
+
+        if not (is_valid_string(parent_or_guardian) or is_valid_string(email)):
+            print("Validation Error: Missing parent/guardian or email")
+            raise ValidationError("At least a parent/guardian name or email must be provided.")
+
+        if not is_valid_string(phone):
+            print("Validation Error: Invalid phone")
+            raise ValidationError("Phone must be a valid string (even if empty).")
+
+        if not is_valid_string(additional_info):
+            print("Validation Error: Invalid additional info")
+            raise ValidationError("Additional info must be a valid string (even if empty).")
+
+        # --- Fetch Related Objects ---
+        lesson_class = None
+        if lesson_class_id:
+            try:
+                lesson_class = LessonClass.objects.get(id=lesson_class_id)
+            except LessonClass.DoesNotExist:
+                print(f"Validation Error: LessonClass id '{lesson_class_id}' does not exist")
+                raise ValidationError(f"Lesson class with id '{lesson_class_id}' does not exist.")
+
+        if not request.user or not request.user.is_authenticated:
+            print("Validation Error: User not logged in")
+            raise ValidationError("User must be logged in to add a player.")
+
+        modified_by = request.user
+
+        print("Creating Player:", first_name, last_name, rating, grade, active_member, is_volunteer, parent_or_guardian,
+              email, phone, additional_info, modified_by)
+
+        # Create the player safely inside a transaction
+        player = Player.add_player(
+            first_name=first_name,
+            last_name=last_name,
+            rating=rating,
+            grade=grade,
+            lesson_class=lesson_class,
+            active_member=active_member,
+            is_volunteer=is_volunteer,
+            parent_or_guardian=parent_or_guardian,
+            email=email,
+            phone=phone,
+            additional_info=additional_info,
+            modified_by=modified_by,
+        )
+
         return JsonResponse({"status": "success", "player_id": player.id})
+
+    except ValidationError as ve:
+        print("ValidationError:", ve)
+        return JsonResponse({"status": "error", "message": str(ve)}, status=400)
+
     except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        print("Unexpected Exception:", e)
+        return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
 @csrf_exempt
@@ -805,46 +904,55 @@ def manual_view(request):
         try:
             if model == "player":
                 if action == "add":
-                    Player.add_player(data)
-                    message = "Player added successfully."
+                    url = f"{API_BASE_URL}/player/add/"
+                    response = requests.post(url, json=data, cookies=request.COOKIES)
                 elif action == "update":
-                    Player.edit_player(target_id, data)
-                    message = "Player updated successfully."
+                    url = f"{API_BASE_URL}/player/update/{target_id}/"
+                    response = requests.post(url, json=data, cookies=request.COOKIES)
                 elif action == "delete":
-                    Player.delete_player(target_id)
-                    message = "Player deleted."
+                    url = f"{API_BASE_URL}/player/delete/{target_id}/"
+                    response = requests.delete(url, cookies=request.COOKIES)
 
             elif model == "game":
                 if action == "add":
-                    Game.add_game(data)
-                    message = "Game added successfully."
+                    url = f"{API_BASE_URL}/game/add/"
+                    response = requests.post(url, json=data, cookies=request.COOKIES)
                 elif action == "update":
-                    Game.update_game(target_id, data)
-                    message = "Game updated successfully."
+                    url = f"{API_BASE_URL}/game/update/{target_id}/"
+                    response = requests.post(url, json=data, cookies=request.COOKIES)
                 elif action == "delete":
-                    Game.delete_game(target_id)
-                    message = "Game deleted."
+                    url = f"{API_BASE_URL}/game/delete/{target_id}/"
+                    response = requests.delete(url, cookies=request.COOKIES)
 
             elif model == "class":
                 if action == "add":
-                    LessonClass.add_class(data)
-                    message = "Class added successfully."
+                    url = f"{API_BASE_URL}/class/add/"
+                    response = requests.post(url, json=data, cookies=request.COOKIES)
                 elif action == "update":
-                    LessonClass.edit_class(target_id, data)
-                    message = "Class updated successfully."
+                    url = f"{API_BASE_URL}/class/update/{target_id}/"
+                    response = requests.post(url, json=data, cookies=request.COOKIES)
                 elif action == "delete":
-                    LessonClass.delete_class(target_id)
-                    message = "Class deleted."
+                    url = f"{API_BASE_URL}/class/delete/{target_id}/"
+                    response = requests.delete(url, cookies=request.COOKIES)
+
+            else:
+                response = None
+
+            if response and response.status_code == 200:
+                response_data = response.json()
+                if response_data.get('status') == 'success' or response_data.get('status') == 'deleted':
+                    message = f"{model.title()} {action} successful."
+                else:
+                    message = f"Error: {response_data.get('message', 'Unknown error')}"
+            else:
+                message = f"Error: Failed to contact API."
 
         except Exception as e:
             message = f"Error: {str(e)}"
 
     def form_fields_to_json(form_class):
         form = form_class()
-        return {
-            name: str(form[name])
-            for name in form.fields
-        }
+        return {name: str(form[name]) for name in form.fields}
 
     context = {
         "players": players,
