@@ -869,7 +869,7 @@ def new_pairings(request):
 
             message = "All manual pairings were successfully created."
             unused_boards = [board for board in BOARDS if board not in used_boards]
-            unpaired_players = list(Player.objects.filter(is_active=True, is_volunteer=False).exclude(
+            unpaired_players = list(Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).exclude(
                 id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name', 'first_name'))
 
             # Generate computer pairings
@@ -933,7 +933,7 @@ def pair(unpaired_players, pairings):
     opponent_list = [player.opponent_one, player.opponent_two, player.opponent_three]
 
     for i in range(1, len(unpaired_players)):
-        if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 21:
+        if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 31:
             pairings.append(get_pair_placement(player, unpaired_players[i]))
             unpaired_players.remove(unpaired_players[i])
             unpaired_players.remove(player)
