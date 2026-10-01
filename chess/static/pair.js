@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const selectedDate = document.getElementById('selectedDate').value;
         const formattedDate = formatDate(selectedDate);
+        const separateClassesChecked = document.getElementById('separateClasses').checked;
 
         gamesData = []
 
@@ -84,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({
                 game_date: formattedDate,
                 games: gamesData,
+                separate_classes: separateClassesChecked
             })
         }).then(response => {
             if (response.ok) {

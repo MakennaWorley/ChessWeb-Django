@@ -128,7 +128,7 @@ def get_players(request):
 def add_player(request):
     try:
         data = json.loads(request.body)
-        print("data:", data)
+        # print("data:", data)
 
         first_name = data.get('first_name', '').strip()
         last_name = data.get('last_name', '').strip()
@@ -147,31 +147,31 @@ def add_player(request):
 
         # Basic validations
         if not (is_valid_not_null_string(first_name) or is_valid_not_null_string(last_name)):
-            print("Validation Error: Missing first or last name")
+            # print("Validation Error: Missing first or last name")
             raise ValidationError("First name or last name is required.")
 
         if not isinstance(rating, int):
-            print("Validation Error: Rating not integer")
+            # print("Validation Error: Rating not integer")
             raise ValidationError("Rating must be an integer.")
 
         if grade is not None and not isinstance(grade, int):
-            print(f"Validation Error: Grade must be integer (received: {grade_raw})")
+            # print(f"Validation Error: Grade must be integer (received: {grade_raw})")
             raise ValidationError("Grade must be an integer if provided.")
 
         if not isinstance(active_member, bool) or not isinstance(is_volunteer, bool):
-            print("Validation Error: active_member or is_volunteer not boolean")
+            # print("Validation Error: active_member or is_volunteer not boolean")
             raise ValidationError("Active member and volunteer flags must be booleans.")
 
         if not (is_valid_string(parent_or_guardian) or is_valid_string(email)):
-            print("Validation Error: Missing parent/guardian or email")
+            # print("Validation Error: Missing parent/guardian or email")
             raise ValidationError("At least a parent/guardian name or email must be provided.")
 
         if not is_valid_string(phone):
-            print("Validation Error: Invalid phone")
+            # print("Validation Error: Invalid phone")
             raise ValidationError("Phone must be a valid string (even if empty).")
 
         if not is_valid_string(additional_info):
-            print("Validation Error: Invalid additional info")
+            # print("Validation Error: Invalid additional info")
             raise ValidationError("Additional info must be a valid string (even if empty).")
 
         # --- Fetch Related Objects ---
@@ -180,17 +180,16 @@ def add_player(request):
             try:
                 lesson_class = LessonClass.objects.get(id=lesson_class_id)
             except LessonClass.DoesNotExist:
-                print(f"Validation Error: LessonClass id '{lesson_class_id}' does not exist")
+                # print(f"Validation Error: LessonClass id '{lesson_class_id}' does not exist")
                 raise ValidationError(f"Lesson class with id '{lesson_class_id}' does not exist.")
 
         if not request.user or not request.user.is_authenticated:
-            print("Validation Error: User not logged in")
+            # print("Validation Error: User not logged in")
             raise ValidationError("User must be logged in to add a player.")
 
         modified_by = request.user
 
-        print("Creating Player:", first_name, last_name, rating, grade, active_member, is_volunteer, parent_or_guardian,
-              email, phone, additional_info, modified_by)
+        # print("Creating Player:", first_name, last_name, rating, grade, active_member, is_volunteer, parent_or_guardian, email, phone, additional_info, modified_by)
 
         # Create the player safely inside a transaction
         player = Player.add_player(
@@ -211,11 +210,11 @@ def add_player(request):
         return JsonResponse({"status": "success", "player_id": player.id})
 
     except ValidationError as ve:
-        print("ValidationError:", ve)
+        # print("ValidationError:", ve)
         return JsonResponse({"status": "error", "message": str(ve)}, status=400)
 
     except Exception as e:
-        print("Unexpected Exception:", e)
+        # print("Unexpected Exception:", e)
         return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
@@ -289,7 +288,7 @@ def get_games(request):
 def add_game(request):
     try:
         data = json.loads(request.body)
-        print("Raw data:", data)
+        # print("Raw data:", data)
 
         date_str = data.get('date_of_match', '').strip()
         board_letter = data.get('board_letter', '').strip()
@@ -299,11 +298,11 @@ def add_game(request):
         result = data.get('result', '').strip()
 
         if board_letter not in VALID_BOARD_LETTERS:
-            print("Invalid board letter:", board_letter)
+            # print("Invalid board letter:", board_letter)
             raise ValidationError(f"Invalid board letter: {board_letter}")
 
         if result not in VALID_RESULTS:
-            print("Invalid result:", result)
+            # print("Invalid result:", result)
             raise ValidationError(f"Invalid game result: {result}")
 
         try:
@@ -313,7 +312,7 @@ def add_game(request):
 
         max_board_number = VALID_BOARD_NUMBERS[board_letter]
         if not (1 <= board_number_int <= max_board_number):
-            print("Invalid board number:", board_number)
+            # print("Invalid board number:", board_number)
             raise ValidationError(
                 f"Invalid board number {board_number_int} for board {board_letter}. Must be between 1 and {max_board_number}.")
 
@@ -333,7 +332,7 @@ def add_game(request):
             try:
                 white_player = Player.objects.get(id=white_player_id)
             except Player.DoesNotExist:
-                print(f"Validation Error: Player id '{white_player_id}' does not exist")
+                # print(f"Validation Error: Player id '{white_player_id}' does not exist")
                 raise ValidationError(f"Player with id '{white_player_id}' does not exist.")
 
         black_player = None
@@ -341,13 +340,13 @@ def add_game(request):
             try:
                 black_player = Player.objects.get(id=black_player_id)
             except Player.DoesNotExist:
-                print(f"Validation Error: Player id '{black_player_id}' does not exist")
+                # print(f"Validation Error: Player id '{black_player_id}' does not exist")
                 raise ValidationError(f"Player with id '{black_player_id}' does not exist.")\
 
-        print(white_player_id, white_player, black_player_id, black_player)
+        # print(white_player_id, white_player, black_player_id, black_player)
 
         if not request.user or not request.user.is_authenticated:
-            print("Validation Error: User not logged in")
+            # print("Validation Error: User not logged in")
             raise ValidationError("User must be logged in to add a player.")
 
         modified_by = request.user
@@ -357,11 +356,11 @@ def add_game(request):
         return JsonResponse({"status": "success", "game_id": new_game.id})
 
     except ValidationError as ve:
-        print("ValidationError:", ve)
+        # print("ValidationError:", ve)
         return JsonResponse({"status": "error", "message": str(ve)}, status=400)
 
     except Exception as e:
-        print("Unexpected Exception:", e)
+        # print("Unexpected Exception:", e)
         return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
@@ -403,7 +402,7 @@ def add_class(request):
         co_teacher_id = data.get('co_teacher') or None
 
         if not (is_valid_not_null_string(name)):
-            print("Validation Error: Missing name")
+            # print("Validation Error: Missing name")
             raise ValidationError("Class name is required.")
 
         # --- Fetch Related Objects ---
@@ -412,7 +411,7 @@ def add_class(request):
             try:
                 teacher = Player.objects.get(id=teacher_id)
             except Player.DoesNotExist:
-                print(f"Validation Error: Player id '{teacher_id}' does not exist")
+                # print(f"Validation Error: Player id '{teacher_id}' does not exist")
                 raise ValidationError(f"Player with id '{teacher_id}' does not exist.")
 
         co_teacher = None
@@ -420,11 +419,11 @@ def add_class(request):
             try:
                 co_teacher = Player.objects.get(id=co_teacher_id)
             except Player.DoesNotExist:
-                print(f"Validation Error: Player id '{co_teacher_id}' does not exist")
+                # print(f"Validation Error: Player id '{co_teacher_id}' does not exist")
                 raise ValidationError(f"Player with id '{co_teacher_id}' does not exist.")
 
         if not request.user or not request.user.is_authenticated:
-            print("Validation Error: User not logged in")
+            # print("Validation Error: User not logged in")
             raise ValidationError("User must be logged in to add a player.")
 
         modified_by = request.user
@@ -434,11 +433,11 @@ def add_class(request):
         return JsonResponse({"status": "success", "class_id": new_class.id})
 
     except ValidationError as ve:
-        print("ValidationError:", ve)
+        # print("ValidationError:", ve)
         return JsonResponse({"status": "error", "message": str(ve)}, status=400)
 
     except Exception as e:
-        print("Unexpected Exception:", e)
+        # print("Unexpected Exception:", e)
         return JsonResponse({"status": "error", "message": "An unexpected error occurred."}, status=400)
 
 
@@ -824,6 +823,7 @@ def new_pairings(request):
             data = json.loads(request.body.decode('utf-8'))
             game_date_str = data.get('game_date')
             games = data.get('games')
+            separate_classes = data.get('separate_classes', False)
 
             # Validate game date
             game_date = validate_game_date(game_date_str)
@@ -869,11 +869,22 @@ def new_pairings(request):
 
             message = "All manual pairings were successfully created."
             unused_boards = [board for board in BOARDS if board not in used_boards]
-            unpaired_players = list(Player.objects.filter(is_active=True, is_volunteer=False).exclude(
+            unpaired_players = list(Player.objects.filter(active_member=True, is_active=True, is_volunteer=False).exclude(
                 id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name', 'first_name'))
 
             # Generate computer pairings
-            pairings = pair(unpaired_players, pairings)
+            if separate_classes:
+                Janice_class = [p for p in unpaired_players if p.lesson_class.name == 'Janice']
+                Cedar_class = [p for p in unpaired_players if p.lesson_class.name == 'Cedar']
+                other_class = [p for p in unpaired_players if p.lesson_class.name not in ['Janice', 'Cedar']]
+            else:
+                other_class = unpaired_players
+
+            pairings = pair(other_class, pairings)
+            if separate_classes:
+                pair(Janice_class, pairings)
+                pair(Cedar_class, pairings)
+
             with transaction.atomic():
                 for i, pairing in enumerate(pairings):
                     board = unused_boards[i]
@@ -922,7 +933,7 @@ def pair(unpaired_players, pairings):
     opponent_list = [player.opponent_one, player.opponent_two, player.opponent_three]
 
     for i in range(1, len(unpaired_players)):
-        if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 21:
+        if unpaired_players[i] not in opponent_list and abs(unpaired_players[i].rating - player.rating) < 31:
             pairings.append(get_pair_placement(player, unpaired_players[i]))
             unpaired_players.remove(unpaired_players[i])
             unpaired_players.remove(player)
@@ -1009,7 +1020,7 @@ def manual_view(request):
         data.pop("model", None)
         data.pop("target_id", None)
 
-        print(action, model, target_id, data)
+        # print(action, model, target_id, data)
 
         try:
             if model == "player":
