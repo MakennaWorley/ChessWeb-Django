@@ -46,8 +46,7 @@ MY_PHONE_NUMBER=555-555-5555
 
 Page scripts live as TypeScript source in `chess/static_src/*.ts` and are compiled to the JS files Django
 actually serves (`chess/static/home.js`, `pair.js`, `input_results.js`, `manual.js`). That compiled output
-is gitignored, not committed — see [/convert_to_type.md](../convert_to_type.md) for why. You need Node
-installed, then:
+is gitignored, not committed, so Node is needed to build it. You need Node installed, then:
 
 ```bash
 npm install

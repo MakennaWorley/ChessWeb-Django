@@ -16,7 +16,7 @@ chess/             The one Django app containing all functionality
     import_game.py   Bulk CSV import: one day's games/pairings
   templates/chess/ One HTML template per page (see PAGES.md)
   static_src/       TypeScript source for the page scripts (types.ts, utils.ts, home.ts, pair.ts,
-                    input_results.ts, manual.ts) — see /convert_to_type.md for the conversion notes
+                    input_results.ts, manual.ts), built via build.mjs/dev.sh
   static/           Build output only: home.js/pair.js/input_results.js/manual.js are esbuild bundles
                     compiled from chess/static_src/*.ts (gitignored, not committed — run `npm run build`)
                     + chess_page_styles.css (hand-written, committed)
