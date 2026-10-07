@@ -52,7 +52,7 @@ In-app help text shown on this page:
 > deleting a game does **NOT** reset the players ratings to before the game result was added. Undo
 > functionality coming in Release 1.2.
 
-The actual table is rendered client-side by [home.js](../chess/static/home.js) from the
+The actual table is rendered client-side by [home.ts](../chess/static_src/home.ts) from the
 `get_ratings_sheet` / `get_games` JSON endpoints, and offers inline add/edit/delete via the plus, pencil,
 and trashcan icons mentioned above.
 
@@ -132,7 +132,7 @@ URL: `/manual/` (name: `manual`)
 A low-level admin form for directly adding/updating/deleting a `Player`, `Game`, or `LessonClass` row,
 intended as a fallback for edits the Home/Pair/Input Results pages don't cover. The form picks Action
 (Add/Update/Delete) and Model (Player/Game/Class), then renders the matching fields client-side via
-[manual.js](../chess/static/manual.js) using JSON blobs of existing rows and form field templates passed in
+[manual.ts](../chess/static_src/manual.ts) using JSON blobs of existing rows and form field templates passed in
 from the view.
 
 Submitting POSTs back to this same page server-side, which then relays the request to the matching

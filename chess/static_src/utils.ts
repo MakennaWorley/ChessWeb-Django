@@ -1,24 +1,36 @@
-let cachedRatings = null;
-let cachedRatingsVolunteers = false;
-let cachedPlayers = null;
-let cachedGames = null;
-let cachedGameDate  = null;
+/**
+ * Shared fetch/render/state helpers used by home.ts, pair.ts, and input_results.ts.
+ * 1:1 port of chess/static/utils.js — see /convert_to_type.md before changing this file.
+ */
+import type { PlayerOption, RatingsPlayerRow, GameRow, BoardLabel, GetGamesResponse } from "./types";
 
-const BOARDS = [
-                        ...Array.from({length: 5}, (_, i) => `G-${i + 1}`),
-                        ...Array.from({length: 6}, (_, i) => `H-${i + 1}`),
-                        ...Array.from({length: 22}, (_, i) => `I-${i + 1}`),
-                        ...Array.from({length: 22}, (_, i) => `J-${i + 1}`)
-                    ];
+export let cachedRatings: RatingsPlayerRow[] | null = null;
+export let cachedRatingsVolunteers = false;
+export let cachedPlayers: PlayerOption[] | null = null;
+export let cachedGames: GameRow[] | null = null;
+export let cachedGameDate: string | null = null;
 
-function formatDate(dateStr) {
+export const BOARDS: BoardLabel[] = [
+    ...Array.from({ length: 5 }, (_, i) => `G-${i + 1}`),
+    ...Array.from({ length: 6 }, (_, i) => `H-${i + 1}`),
+    ...Array.from({ length: 22 }, (_, i) => `I-${i + 1}`),
+    ...Array.from({ length: 22 }, (_, i) => `J-${i + 1}`),
+];
+
+export function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split('T')[0]!;
 }
 
-async function fetchPlayers() {
+/** Same selector every page uses for the CSRF token; centralized to avoid repeating the null check. */
+export function getCsrfToken(): string {
+    const input = document.querySelector<HTMLInputElement>('[name=csrfmiddlewaretoken]');
+    return input?.value || '';
+}
+
+export async function fetchPlayers(): Promise<PlayerOption[]> {
     if (cachedPlayers) {
-        return cachedPlayers
+        return cachedPlayers;
     }
 
     try {
@@ -26,26 +38,36 @@ async function fetchPlayers() {
         if (!response.ok) {
             throw new Error('Error reading data');
         }
-        const data = await response.json();
+        const data: { players: PlayerOption[] } = await response.json();
         cachedPlayers = data.players;
         return cachedPlayers;
-
     } catch (error) {
         console.error('There was a problem fetching player data:', error);
         return [];
     }
 }
 
-async function fetchGames() {
+/**
+ * Unused by any page today (verified against chess/static/*.js and chess/templates) —
+ * ported as-is per convert_to_type.md's "don't remove unilaterally" rule. The original
+ * relied on a `gameDateSelect` global only declared in home.js; that cross-file coupling
+ * is replaced here with the same `document.getElementById('game-date')` lookup home.js
+ * itself used, which is the deliberate fix convert_to_type.md calls for — same element,
+ * same behavior, no more load-order dependency on another page's script.
+ */
+export async function fetchGames(): Promise<GetGamesResponse | undefined> {
+    const gameDateSelect = document.getElementById('game-date') as HTMLInputElement | null;
+    if (!gameDateSelect) {
+        throw new Error('game-date element not found');
+    }
     const gameDate = formatDate(gameDateSelect.value);
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     try {
         const response = await fetch(getGamesUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': getCsrfToken(),
             },
             body: JSON.stringify({ game_date: gameDate }),
         });
@@ -54,20 +76,20 @@ async function fetchGames() {
             throw new Error('Bad Request');
         }
 
-        const data = await response.json();
-        if (data.status === "error") {
-            console.error("Server response:", data.message);
+        const data: GetGamesResponse = await response.json();
+        if ('status' in data && data.status === 'error') {
+            console.error('Server response:', data.message);
         }
 
         return data;
     } catch (error) {
         console.error('Error fetching pairings data:', error);
+        return undefined;
     }
 }
 
-async function fetchRatingsSheet(showVolunteers) {
-    const ratingsSheetDiv = document.getElementById('ratings_sheet');
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+export async function fetchRatingsSheet(showVolunteers: boolean): Promise<void> {
+    const ratingsSheetDiv = document.getElementById('ratings_sheet')!;
 
     if (cachedRatings && cachedRatingsVolunteers === showVolunteers) {
         ratingsSheetDiv.innerHTML = generateRatingsSheetHTML(cachedRatings);
@@ -78,15 +100,16 @@ async function fetchRatingsSheet(showVolunteers) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': getCsrfToken(),
             },
             body: JSON.stringify({ show_volunteers: showVolunteers }),
         });
         if (!response.ok) {
             throw new Error('Error reading data');
         }
-        const data = await response.json();
+        const data: { players: RatingsPlayerRow[] } = await response.json();
         cachedRatings = data.players;
+        cachedRatingsVolunteers = showVolunteers;
 
         ratingsSheetDiv.innerHTML = generateRatingsSheetHTML(cachedRatings);
     } catch (error) {
@@ -94,10 +117,10 @@ async function fetchRatingsSheet(showVolunteers) {
     }
 }
 
-async function fetchPairingsSheet() {
-    const pairingsSheetDiv = document.getElementById('pairings_sheet');
+export async function fetchPairingsSheet(): Promise<void> {
+    const pairingsSheetDiv = document.getElementById('pairings_sheet')!;
+    const gameDateSelect = document.getElementById('game-date') as HTMLInputElement;
     const gameDate = formatDate(gameDateSelect.value);
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     if (cachedGames && cachedGameDate === gameDate) {
         pairingsSheetDiv.innerHTML = generatePairingsSheetHTML(cachedGames);
@@ -109,7 +132,7 @@ async function fetchPairingsSheet() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
+                'X-CSRFToken': getCsrfToken(),
             },
             body: JSON.stringify({ game_date: gameDate }),
         });
@@ -118,21 +141,22 @@ async function fetchPairingsSheet() {
             throw new Error('Bad Request');
         }
 
-        const data = await response.json();
-        if (data.status === "error") {
-            console.error("Server response:", data.message);
+        const data: GetGamesResponse = await response.json();
+        if ('status' in data && data.status === 'error') {
+            console.error('Server response:', data.message);
         }
 
-        cachedGames = data.games || [];
+        const games = 'games' in data ? data.games : [];
+        cachedGames = games;
         cachedGameDate = gameDate;
 
-        pairingsSheetDiv.innerHTML = generatePairingsSheetHTML(data.games || []);
+        pairingsSheetDiv.innerHTML = generatePairingsSheetHTML(games);
     } catch (error) {
         console.error('Error fetching pairings data:', error);
     }
 }
 
-async function populatePlayerDropdown(selectedPlayer) {
+export async function populatePlayerDropdown(selectedPlayer: string): Promise<string> {
     let dropdownHTML = '';
 
     if (Array.isArray(cachedPlayers)) {
@@ -147,9 +171,9 @@ async function populatePlayerDropdown(selectedPlayer) {
 }
 
 // Function to handle player selection and set other occurrences of that player to N/A
-function handlePlayerSelection(selectedDropdown) {
+export function handlePlayerSelection(selectedDropdown: HTMLSelectElement): void {
     const selectedPlayer = selectedDropdown.value;
-    const playerDropdowns = document.querySelectorAll('.player-select');
+    const playerDropdowns = document.querySelectorAll<HTMLSelectElement>('.player-select');
 
     playerDropdowns.forEach(dropdown => {
         if (dropdown !== selectedDropdown && dropdown.value === selectedPlayer) {
@@ -158,7 +182,7 @@ function handlePlayerSelection(selectedDropdown) {
     });
 }
 
-function generateRatingsSheetHTML(players) {
+export function generateRatingsSheetHTML(players: RatingsPlayerRow[]): string {
     let html = `
     <table>
         <thead>
@@ -198,7 +222,7 @@ function generateRatingsSheetHTML(players) {
     return html;
 }
 
-function generatePairingsSheetHTML(games) {
+export function generatePairingsSheetHTML(games: GameRow[]): string {
     let html = `
     <table>
         <thead>
