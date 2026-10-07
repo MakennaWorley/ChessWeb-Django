@@ -166,3 +166,4 @@ chess/migrations/
 files/
 node_modules/
 *.DS_Store
+CLAUDE.md

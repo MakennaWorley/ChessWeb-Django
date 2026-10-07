@@ -111,9 +111,13 @@ algorithm for everyone else.
 
 > After the success message, you can now download the pairings sheet!
 
-Inside the modal: "Players can only play one game per meet!" There's also a checkbox, "Pair Janice's class
-separate?", which runs that class's pairing independently (see
-[ARCHITECTURE.md § Pairing algorithm](ARCHITECTURE.md#pairing-algorithm)).
+Inside the modal: "Players can only play one game per meet!" There are also two checkboxes:
+
+- "Pair Janice's class?" (checked by default) — unchecking it excludes everyone in Janice's class from
+  pairing entirely; they get no game that day.
+- "Pair Janice's class separate?" — when Janice's class is being paired, this runs that class's (and
+  Cedar's) pairing independently from everyone else instead of mixing them into the general pool (see
+  [ARCHITECTURE.md § Pairing algorithm](ARCHITECTURE.md#pairing-algorithm)).
 
 **Download Pairing Sheet** — pick a date and download the current state of that day's board assignments as
 an `.xlsx`.

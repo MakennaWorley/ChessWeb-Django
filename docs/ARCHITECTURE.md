@@ -109,8 +109,13 @@ kept in [files/pairings_notes.txt](../files/pairings_notes.txt)):
 5. `get_pair_placement()` / `get_player_placement()` decide who plays White vs. Black for a found pair,
    alternating based on each player's most recent game so the same player doesn't repeatedly play the same
    color.
-6. If "Pair Janice's/Cedar's class separately" is checked, those two classes' rosters are paired
+6. If "Pair Janice's class separately" is checked, Janice's and Cedar's class rosters are paired
    independently from everyone else before being merged back into one set of games.
+7. "Pair Janice's class?" is a separate, independent toggle (checked by default) that controls whether
+   Janice's class participates in pairing at all: unchecked, every player in Janice's class is dropped from
+   the pool before pairing runs and gets no game that day, regardless of the "separately" checkbox. Checked
+   (the default), Janice's class is included — and the "separately" checkbox then decides whether it's
+   mixed into the general pool or paired on its own.
 
 The resulting pairings are saved as new `Game` rows (`result=''`, i.e. unplayed) and later get their result
 filled in on the Input Results page, which is what actually triggers the rating recalculation above.

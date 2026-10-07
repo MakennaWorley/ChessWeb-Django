@@ -1,31 +1,36 @@
-import os
 import json
+import os
 import re
-import requests
+from datetime import datetime
 
+import requests
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Count, Q
 from django.forms.models import model_to_dict
-from django.http import HttpResponseRedirect, HttpResponse, Http404, JsonResponse
-from django.shortcuts import get_object_or_404, render, redirect
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from datetime import datetime
-
-from .forms import SignUpForm, PairingDateForm, GameSaveForm, PlayerForm, GameForm, LessonClassForm
-from .models import RegisteredUser, Player, Game, LessonClass
-from .write_to_file import write_ratings, write_pairings, export_player_data
-
+from .forms import (
+    GameForm,
+    GameSaveForm,
+    LessonClassForm,
+    PairingDateForm,
+    PlayerForm,
+    SignUpForm,
+)
+from .models import Game, LessonClass, Player, RegisteredUser
+from .write_to_file import export_player_data, write_pairings, write_ratings
 
 # Global Variables
 CREATED_RATING_FILES_DIR = os.path.join(os.path.dirname(__file__), '../files', 'ratings')
@@ -824,6 +829,7 @@ def new_pairings(request):
             game_date_str = data.get('game_date')
             games = data.get('games')
             separate_classes = data.get('separate_classes', False)
+            pair_janice_class = data.get('pair_janice_class', False)
 
             # Validate game date
             game_date = validate_game_date(game_date_str)
@@ -873,6 +879,9 @@ def new_pairings(request):
                 id__in=[player.id for player in paired_players]).order_by('-rating', '-grade', 'last_name', 'first_name'))
 
             # Generate computer pairings
+            if not pair_janice_class:
+                unpaired_players = [p for p in unpaired_players if p.lesson_class.name != 'Janice']
+
             if separate_classes:
                 Janice_class = [p for p in unpaired_players if p.lesson_class.name == 'Janice']
                 Cedar_class = [p for p in unpaired_players if p.lesson_class.name == 'Cedar']
