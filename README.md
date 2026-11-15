@@ -89,27 +89,40 @@ changes.
 
 ### Requirements
 
-- Python 3.12 and Node.js (for the frontend build)
-- A virtual environment at `venv/` in the repo root
+- Python 3.10+ (3.12 recommended) and Node.js with npm
+  (macOS: `brew install python@3.12 node`)
 
-### First-time setup
+### Quick install
+
+```bash
+bash install.sh
+```
+
+The installer is safe to re-run. It creates `venv/` and installs `requirements.txt`, runs `npm install`
+and builds the frontend, generates a `.env` with a fresh `SECRET_KEY` (if you don't have one), runs
+migrations, seeds the roster from `files/*.csv` if those files exist, and prompts you to create a
+superuser — that's your login once the server is running.
+
+The seed CSVs (`files/volunteers2026.csv`, `classes2026.csv`, `players2026.csv`) are gitignored and not in
+the repo; without them the install still succeeds, just with an empty roster you can fill in on the
+*Manual Edit* page. See [docs/DATABASE.md](docs/DATABASE.md#resetting-the-database-from-scratch) for
+`dbreset.sh` details, and [docs/SETUP.md](docs/SETUP.md#environment-variables) for `.env` variables.
+
+### Manual setup
+
+If you'd rather do it by hand:
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install Django==5.1.1 django-allauth==65.0.2 openpyxl==3.1.5 python-decouple==3.8 requests==2.32.3
+pip install -r requirements.txt
 
 npm install              # installs the frontend build tooling (typescript + esbuild)
+npm run build
 
+# create .env (see docs/SETUP.md), then:
 bash dbreset.sh          # runs migrations, creates a superuser, and seeds the club roster
 ```
-
-`dbreset.sh` will prompt you to create a superuser account interactively — that's your login once the
-server is running. See [docs/DATABASE.md](docs/DATABASE.md#resetting-the-database-from-scratch) for what
-it does in detail and how to recover if it fails partway through (e.g. bad data in a CSV).
-
-You'll also need a `.env` file in the repo root — see
-[docs/SETUP.md](docs/SETUP.md#environment-variables) for the required/optional variables.
 
 ### Every time after that
 

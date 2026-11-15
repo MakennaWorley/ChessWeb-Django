@@ -5,8 +5,7 @@
 - Python 3.12
 - A virtual environment (the project expects one at `venv/` in the repo root)
 
-ChessWeb has no `requirements.txt` checked in; the following packages are installed in the project's
-existing `venv`:
+ChessWeb pins its Python packages in `requirements.txt` (or just run `bash install.sh`):
 
 ```
 Django==5.1.1
@@ -21,7 +20,7 @@ If you're setting up a fresh environment, install them with:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install Django==5.1.1 django-allauth==65.0.2 openpyxl==3.1.5 python-decouple==3.8 requests==2.32.3
+pip install -r requirements.txt
 ```
 
 ## Environment variables
