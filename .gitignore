@@ -163,10 +163,8 @@ cython_debug/
 github/
 chess/migrations/
 .idea/
-files/
 node_modules/
 *.DS_Store
-CLAUDE.md
 
 # TypeScript build output (chess/static_src/*.ts -> chess/static/*.js); see convert_to_type.md
 chess/static/*.js
